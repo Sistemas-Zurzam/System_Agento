@@ -389,6 +389,21 @@ class PruebaService
         }
     }
 
+    /**
+     * Lista en el orden en que la envió el formulario. El arreglo validado
+     * de Laravel se arma campo por campo: si a un elemento le falta un campo
+     * (ej. una opción solo con imagen, sin texto), sus claves pueden quedar
+     * desordenadas; se reordenan por índice antes de numerar.
+     *
+     * @return array<int, mixed>
+     */
+    private function enOrden(array $lista): array
+    {
+        ksort($lista);
+
+        return array_values($lista);
+    }
+
     private function familia(Prueba $prueba)
     {
         return Prueba::withoutGlobalScopes()
@@ -404,7 +419,7 @@ class PruebaService
     {
         $dimensionIds = [];
         $codigos = [];
-        foreach ($datos['dimensiones'] ?? [] as $dimension) {
+        foreach ($this->enOrden($datos['dimensiones'] ?? []) as $dimension) {
             $esValidez = (bool) ($dimension['es_validez'] ?? false);
             $codigo = isset($dimension['codigo']) && $dimension['codigo'] !== '' ? strtoupper((string) $dimension['codigo']) : null;
             $creada = $prueba->dimensiones()->create([
@@ -426,14 +441,14 @@ class PruebaService
             }
         }
 
-        $escala = collect($datos['escala'] ?? [])->values();
+        $escala = collect($this->enOrden($datos['escala'] ?? []));
         foreach ($escala as $orden => $punto) {
             $prueba->escala()->create(['valor' => (float) $punto['valor'], 'etiqueta' => $punto['etiqueta'], 'orden' => $orden]);
         }
         // Invertida = (mínimo + máximo) − valor: 1→5, 2→4… en una escala 1–5.
         $sumaExtremos = $escala->isEmpty() ? 0 : (float) $escala->min('valor') + (float) $escala->max('valor');
 
-        foreach (array_values($datos['preguntas'] ?? []) as $orden => $pregunta) {
+        foreach ($this->enOrden($datos['preguntas'] ?? []) as $orden => $pregunta) {
             $dimensionId = $dimensionIds[(string) $pregunta['dimension']] ?? null;
             if (! $dimensionId) {
                 throw ValidationException::withMessages(["preguntas.{$orden}.dimension" => 'La pregunta debe pertenecer a una dimensión de la prueba.']);
@@ -466,7 +481,7 @@ class PruebaService
                 continue;
             }
 
-            foreach (array_values($pregunta['opciones'] ?? []) as $ordenOpcion => $opcion) {
+            foreach ($this->enOrden($pregunta['opciones'] ?? []) as $ordenOpcion => $opcion) {
                 $creada->opciones()->create([
                     'texto' => $opcion['texto'] ?? null,
                     'imagen_id' => $opcion['imagen_id'] ?? null,

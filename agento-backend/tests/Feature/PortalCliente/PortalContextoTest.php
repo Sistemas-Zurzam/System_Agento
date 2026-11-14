@@ -49,6 +49,13 @@ class PortalContextoTest extends TestCase
         // compara contra la fila real — una instancia recién creada en
         // memoria puede no tener el valor por defecto de la columna
         // (token_version) todavía cargado, lo que invalidaría el token.
+        // Dentro de un test todas las peticiones comparten la aplicación: el
+        // guard JWT conservaría el usuario ya resuelto (con su empresa activa
+        // anterior). Se descarta para que cada petición lo resuelva de nuevo.
+        $this->app['auth']->forgetGuards();
+        $this->app->forgetInstance('tymon.jwt');
+        $this->app->forgetInstance('tymon.jwt.auth');
+
         return ['Authorization' => 'Bearer '.JWTAuth::fromUser($usuario->fresh())];
     }
 

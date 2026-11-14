@@ -4,6 +4,7 @@ namespace Tests\Feature\Modules\Reclutamiento;
 
 use App\Models\User;
 use App\Modules\Reclutamiento\Models\Postulacion;
+use App\Modules\Reclutamiento\Models\ProcesoSeleccion;
 use App\Modules\Reclutamiento\Models\Prueba;
 use App\Modules\Reclutamiento\Models\PruebaAsignacion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -202,7 +203,7 @@ class BancoPruebasAgentoTest extends TestCase
         $this->assertTrue($vista['dimensiones'][1]['es_validez']);
         $this->assertSame(['escala', 'escala', 'escala', 'opciones'], array_column($vista['preguntas'], 'tipo'));
         $this->assertTrue($vista['preguntas'][1]['invertida']);
-        $this->assertSame([0.0, 1.0, 0.0], array_column($vista['preguntas'][3]['opciones'], 'valor'));
+        $this->assertSame([0.0, 1.0, 0.0], array_map('floatval', array_column($vista['preguntas'][3]['opciones'], 'valor')));
     }
 
     public function test_afirmaciones_pegadas_desde_un_pdf_quedan_para_asignar_dimension(): void
@@ -319,7 +320,7 @@ class BancoPruebasAgentoTest extends TestCase
     }
 
     /**
-     * @return array{rys: User, headers: array, proceso: \App\Modules\Reclutamiento\Models\ProcesoSeleccion, prueba: array}
+     * @return array{rys: User, headers: array, proceso: ProcesoSeleccion, prueba: array}
      */
     private function procesoConPruebaDeConocimientos(string $momento, ?int $minimo = null): array
     {

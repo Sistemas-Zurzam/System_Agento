@@ -80,7 +80,7 @@ class ProcesoSeleccion extends Model
 
     public function dimensionesPrioritarias(): HasMany
     {
-        return $this->hasMany(ProcesoDimensionPrioritaria::class, 'proceso_id');
+        return $this->hasMany(ProcesoDimensionPrioritaria::class, 'proceso_id')->orderBy('id');
     }
 
     /**

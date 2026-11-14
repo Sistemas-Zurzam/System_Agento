@@ -388,7 +388,8 @@ class ImportadorPrueba
      */
     private function preguntaOpciones(string $texto, mixed $dimension, string $opciones): array
     {
-        $lista = collect(explode(';', $opciones))->map('trim')->filter()->map(function (string $opcion) {
+        // fn: map('trim') le pasaría el índice como caracteres a quitar.
+        $lista = collect(explode(';', $opciones))->map(fn (string $o) => trim($o))->filter()->map(function (string $opcion) {
             $partes = explode('=', $opcion);
             $valor = count($partes) > 1 ? array_pop($partes) : '0';
 
@@ -396,7 +397,7 @@ class ImportadorPrueba
         })->values()->all();
 
         if (count($lista) < 2) {
-            $this->advertencias[] = "La pregunta \"".Str::limit($texto, 40).'" necesita al menos dos opciones.';
+            $this->advertencias[] = 'La pregunta "'.Str::limit($texto, 40).'" necesita al menos dos opciones.';
         }
 
         return [

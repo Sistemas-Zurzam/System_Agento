@@ -44,7 +44,7 @@ class AlmacenDocumentosCandidato
     {
         $extensiones = ['application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png'];
         $maxBytes = (int) config('reclutamiento.cv.max_kb', 5120) * 1024;
-        $mimeReal = (new info(FILEINFO_MIME_TYPE))->file($archivo->getRealPath());
+        $mimeReal = (new \finfo(FILEINFO_MIME_TYPE))->file($archivo->getRealPath());
 
         if ($archivo->getSize() > $maxBytes || ! isset($extensiones[$mimeReal])) {
             throw ValidationException::withMessages([

@@ -10,8 +10,8 @@ use Tests\TestCase;
 
 /**
  * Seguimiento de solicitudes de personal en el Portal de Empresa: agregado
- * por etapa y por plazas del proceso real, restringido a las áreas del
- * gerente y sin datos privados de candidatos.
+ * por etapa y por plazas del proceso real, de las áreas que puede seguir el
+ * usuario (gerencia: toda su empresa) y sin datos privados de candidatos.
  */
 class PortalPersonalSeguimientoTest extends TestCase
 {
@@ -42,8 +42,10 @@ class PortalPersonalSeguimientoTest extends TestCase
 
         $respuesta = $this->withHeaders($this->cabeceras($gerente))->getJson('/api/portal/personal/solicitudes')->assertOk();
 
-        $this->assertCount(1, $respuesta->json('data'), 'Solo solicitudes de las áreas del gerente.');
-        $seguimiento = $respuesta->json('data.0.seguimiento');
+        // Gerencia (seleccion.solicitudes.todas_areas) sigue las solicitudes
+        // de todas las áreas de su empresa.
+        $this->assertCount(2, $respuesta->json('data'), 'Gerencia ve las solicitudes de toda su empresa.');
+        $seguimiento = collect($respuesta->json('data'))->firstWhere('area', $area->nombre)['seguimiento'];
         $this->assertSame(3, $seguimiento['plazas_vigentes']);
         $this->assertSame(1, $seguimiento['plazas_cubiertas']);
         $this->assertFalse($seguimiento['cubierto'], 'Una plaza cubierta de tres no cubre la solicitud.');

@@ -4,7 +4,6 @@ namespace App\Modules\Reclutamiento\Application;
 
 use App\Modules\Reclutamiento\Domain\FlujoPostulacion;
 use App\Modules\Reclutamiento\Models\Postulacion;
-use App\Modules\Reclutamiento\Models\ProcesoSeleccion;
 use App\Modules\Reclutamiento\Models\Prueba;
 use App\Modules\Reclutamiento\Models\PruebaAsignacion;
 use Illuminate\Support\Facades\Log;
