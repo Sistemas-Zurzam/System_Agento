@@ -81,6 +81,27 @@ class RegistradorAuditoria
         return count($eventos);
     }
 
+    /**
+     * Bloqueo temporal de una cuenta por fallos de login consecutivos. Queda
+     * asociado a la empresa de la cuenta (si existe) sin revelarlo al cliente.
+     */
+    public function cuentaBloqueada(Request $request, string $identificador): void
+    {
+        $objetivo = User::query()
+            ->where(filter_var($identificador, FILTER_VALIDATE_EMAIL) ? 'email' : 'username', $identificador)
+            ->first();
+
+        $this->crear($objetivo, [
+            'tipo' => AuditoriaEvento::TIPO_AUTH,
+            'accion' => 'auth.cuenta_bloqueada',
+            'modulo' => 'auth',
+            'metodo' => 'POST',
+            'ruta' => 'api/login',
+            'status_code' => 429,
+            'payload' => ['login' => Str::limit($identificador, 150, ''), 'bloqueo_minutos' => (int) config('seguridad.login.bloqueo_minutos')],
+        ], $request, $objetivo === null ? $identificador : null);
+    }
+
     private function registrarLogin(Request $request, int $estado, ?User $usuario, float $inicio): void
     {
         $identificador = (string) $request->input('login');
