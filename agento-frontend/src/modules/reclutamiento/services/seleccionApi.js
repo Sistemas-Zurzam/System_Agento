@@ -90,6 +90,9 @@ export const seleccionApi = {
       formulario.append('imagen', archivo);
       return api.post('/seleccion/pruebas/imagenes', formulario).then(datos);
     },
+    enlace: (id) => api.get(`/seleccion/pruebas/${id}/enlace`).then(datos),
+    crearEnlace: (id) => api.post(`/seleccion/pruebas/${id}/enlace`).then(datos),
+    desactivarEnlace: (id) => api.delete(`/seleccion/pruebas/${id}/enlace`).then(datos),
     concluir: (asignacionId, valores) => api.post(`/seleccion/pruebas/asignaciones/${asignacionId}/conclusion`, valores).then(datos),
   },
 

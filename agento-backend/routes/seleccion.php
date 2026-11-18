@@ -9,6 +9,7 @@ use App\Modules\Reclutamiento\Http\Controllers\ProcesoController;
 use App\Modules\Reclutamiento\Http\Controllers\PruebaController;
 use App\Modules\Reclutamiento\Http\Controllers\Publico\CandidatoController;
 use App\Modules\Reclutamiento\Http\Controllers\Publico\EmpleosController;
+use App\Modules\Reclutamiento\Http\Controllers\Publico\EnlacePruebaPublicoController;
 use App\Modules\Reclutamiento\Http\Controllers\Publico\PruebaPublicaController;
 use App\Modules\Reclutamiento\Http\Controllers\SolicitudController;
 use App\Modules\Reclutamiento\Http\Middleware\AutenticarCandidato;
@@ -96,6 +97,9 @@ Route::middleware(['jwt', 'servicio:reclutamiento'])->prefix('seleccion')->group
     Route::get('/pruebas/{prueba}', [PruebaController::class, 'show'])->middleware('permiso:seleccion.evaluaciones.gestionar');
     Route::put('/pruebas/{prueba}', [PruebaController::class, 'update'])->middleware('permiso:seleccion.evaluaciones.gestionar');
     Route::post('/pruebas/{prueba}/publicar', [PruebaController::class, 'publicar'])->middleware('permiso:seleccion.evaluaciones.gestionar');
+    Route::get('/pruebas/{prueba}/enlace', [PruebaController::class, 'enlace'])->middleware('permiso:seleccion.evaluaciones.gestionar');
+    Route::post('/pruebas/{prueba}/enlace', [PruebaController::class, 'crearEnlace'])->middleware('permiso:seleccion.evaluaciones.gestionar');
+    Route::delete('/pruebas/{prueba}/enlace', [PruebaController::class, 'desactivarEnlace'])->middleware('permiso:seleccion.evaluaciones.gestionar');
     Route::post('/pruebas/{prueba}/validar', [PruebaController::class, 'validar'])->middleware('permiso:seleccion.evaluaciones.gestionar');
     Route::post('/pruebas/{prueba}/nueva-version', [PruebaController::class, 'nuevaVersion'])->middleware('permiso:seleccion.evaluaciones.gestionar');
     Route::post('/pruebas/{prueba}/archivar', [PruebaController::class, 'archivar'])->middleware('permiso:seleccion.evaluaciones.gestionar');
@@ -132,6 +136,9 @@ Route::prefix('publico')->middleware('throttle:seleccion-publico')->group(functi
         Route::post('/candidatos/pruebas/{asignacion}/acceso', [CandidatoController::class, 'accesoPrueba'])->whereNumber('asignacion');
         Route::post('/candidatos/sesion/cerrar', [CandidatoController::class, 'cerrarSesion']);
     });
+
+    Route::get('/evaluaciones/{token}', [EnlacePruebaPublicoController::class, 'show']);
+    Route::post('/evaluaciones/{token}/acceso', [EnlacePruebaPublicoController::class, 'acceso'])->middleware('throttle:seleccion-verificacion');
 
     Route::get('/pruebas/{token}', [PruebaPublicaController::class, 'show']);
     Route::post('/pruebas/{token}/iniciar', [PruebaPublicaController::class, 'iniciar']);

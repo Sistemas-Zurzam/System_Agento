@@ -1,4 +1,4 @@
-import { EditOutlined } from '@ant-design/icons';
+import { EditOutlined, LinkOutlined } from '@ant-design/icons';
 import { Alert, Button, Collapse, Empty, Input, Modal, Segmented, Select, Skeleton, Tag } from 'antd';
 import { useMemo, useState } from 'react';
 import { mensajeDeError } from '../constants/seleccion';
@@ -10,7 +10,7 @@ import { urlRecurso } from '../services/urlRecurso';
  * (dimensión, invertida y valor de cada opción); "Vista del candidato"
  * muestra solo lo que ve quien la rinde.
  */
-export default function VerPruebaModal({ abierto, prueba, cargando, error, onCerrar, onEditar }) {
+export default function VerPruebaModal({ abierto, prueba, cargando, error, onCerrar, onEditar, onEnlace }) {
   const [vista, setVista] = useState('evaluador');
   const [dimension, setDimension] = useState();
   const [busqueda, setBusqueda] = useState('');
@@ -48,8 +48,11 @@ export default function VerPruebaModal({ abierto, prueba, cargando, error, onCer
             {prueba.area_conocimiento && <Tag color="purple">{prueba.area_conocimiento}</Tag>}
             {prueba.origen === 'agento' && <Tag color="blue">Banco Agento</Tag>}
             <span>{prueba.preguntas?.length ?? 0} preguntas · {prueba.tiempo_limite_minutos} min</span>
+            {onEnlace && (
+              <Button size="small" icon={<LinkOutlined />} className="ml-auto" onClick={() => onEnlace(prueba)}>Enlace para rendir</Button>
+            )}
             {onEditar && (
-              <Button type="primary" size="small" icon={<EditOutlined />} className="ml-auto" onClick={() => onEditar(prueba)}>
+              <Button type="primary" size="small" icon={<EditOutlined />} className={onEnlace ? '' : 'ml-auto'} onClick={() => onEditar(prueba)}>
                 {prueba.estado === 'borrador' ? 'Editar' : 'Editar (nueva versión)'}
               </Button>
             )}

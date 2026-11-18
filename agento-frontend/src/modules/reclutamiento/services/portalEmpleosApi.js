@@ -61,6 +61,9 @@ export const portalEmpleosApi = {
   retirar: (id, motivo) => cliente.post(`/candidatos/postulaciones/${id}/retiro`, { motivo }).then(datos),
   accesoPrueba: (asignacionId) => cliente.post(`/candidatos/pruebas/${asignacionId}/acceso`).then(datos),
 
+  evaluacion: (token) => cliente.get(`/evaluaciones/${token}`).then(datos),
+  accesoEvaluacion: (token, credencial) => cliente.post(`/evaluaciones/${token}/acceso`, { credencial }).then(datos),
+
   prueba: (token) => cliente.get(`/pruebas/${token}`).then(datos),
   iniciarPrueba: (token) => cliente.post(`/pruebas/${token}/iniciar`).then(datos),
   responder: (token, preguntaId, opcionId) => cliente.post(`/pruebas/${token}/respuestas`, { pregunta_id: preguntaId, opcion_id: opcionId }).then(datos),

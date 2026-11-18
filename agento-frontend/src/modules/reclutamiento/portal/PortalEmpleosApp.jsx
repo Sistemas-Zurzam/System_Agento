@@ -9,6 +9,7 @@ import { MODALIDADES, TIPOS_CONTRATO, etiquetaDe } from '../constants/seleccion'
 import { useAccesoCandidato, useEmpleo, useEmpleos } from '../hooks/usePortalEmpleos';
 import MisPostulaciones from './MisPostulaciones';
 import PostulacionForm from './PostulacionForm';
+import EvaluacionPorEnlace from './EvaluacionPorEnlace';
 import RendirPrueba from './RendirPrueba';
 import VerificarCorreo from './VerificarCorreo';
 
@@ -17,6 +18,8 @@ function rutaDesde(pathname) {
   if (ruta === '/empleos/mis-postulaciones') return { vista: 'mis' };
   const prueba = ruta.match(/^\/empleos\/prueba\/([A-Za-z0-9]+)$/);
   if (prueba) return { vista: 'prueba', token: prueba[1] };
+  const evaluacion = ruta.match(/^\/empleos\/evaluacion\/([A-Za-z0-9]+)$/);
+  if (evaluacion) return { vista: 'evaluacion', token: evaluacion[1] };
   const detalle = ruta.match(/^\/empleos\/([A-Za-z0-9-]+)$/);
   if (detalle) return { vista: 'detalle', codigo: detalle[1] };
   return { vista: 'listado' };
@@ -178,6 +181,7 @@ export default function PortalEmpleosApp() {
         {ruta.vista === 'detalle' && <Detalle codigo={ruta.codigo} invitacion={invitacion} acceso={acceso} navegar={navegar} />}
         {ruta.vista === 'mis' && <MisPostulaciones acceso={acceso} navegar={navegar} />}
         {ruta.vista === 'prueba' && <RendirPrueba token={ruta.token} />}
+        {ruta.vista === 'evaluacion' && <EvaluacionPorEnlace token={ruta.token} />}
       </main>
     </Layout>
   );

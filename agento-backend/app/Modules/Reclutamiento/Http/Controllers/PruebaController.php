@@ -3,6 +3,7 @@
 namespace App\Modules\Reclutamiento\Http\Controllers;
 
 use App\Modules\Reclutamiento\Application\AplicacionPruebaService;
+use App\Modules\Reclutamiento\Application\EnlacePruebaService;
 use App\Modules\Reclutamiento\Application\ImportadorPrueba;
 use App\Modules\Reclutamiento\Application\PruebaService;
 use App\Modules\Reclutamiento\Http\Requests\MotivoRequest;
@@ -29,6 +30,7 @@ class PruebaController extends SeleccionController
         private readonly PruebaService $pruebas,
         private readonly AplicacionPruebaService $aplicacion,
         private readonly ImportadorPrueba $importador,
+        private readonly EnlacePruebaService $enlaces,
     ) {}
 
     public function index(Request $request): AnonymousResourceCollection
@@ -104,6 +106,68 @@ class PruebaController extends SeleccionController
             'Cache-Control' => 'private, max-age=3600',
             'X-Content-Type-Options' => 'nosniff',
         ]);
+    }
+
+    /**
+     * Enlace compartible (inicio de sesión con Google) y quiénes lo rindieron.
+     */
+    public function enlace(Request $request, Prueba $prueba): JsonResponse
+    {
+        return response()->json(['data' => $this->datosEnlace($this->enlaces->resumen($this->alcance($request), $prueba))]);
+    }
+
+    public function crearEnlace(Request $request, Prueba $prueba): JsonResponse
+    {
+        $alcance = $this->alcance($request);
+        $this->enlaces->obtenerOCrear($alcance, $prueba);
+
+        return response()->json(['data' => $this->datosEnlace($this->enlaces->resumen($alcance, $prueba))], 201);
+    }
+
+    public function desactivarEnlace(Request $request, Prueba $prueba): JsonResponse
+    {
+        $alcance = $this->alcance($request);
+        $this->enlaces->desactivar($alcance, $prueba);
+
+        return response()->json(['data' => $this->datosEnlace($this->enlaces->resumen($alcance, $prueba))]);
+    }
+
+    /**
+     * @param  array{url: ?string, activo: bool, participantes: \Illuminate\Support\Collection}  $resumen
+     * @return array<string, mixed>
+     */
+    private function datosEnlace(array $resumen): array
+    {
+        return [
+            'url' => $resumen['url'],
+            'activo' => $resumen['activo'],
+            'participantes' => $resumen['participantes']->map(fn (PruebaAsignacion $a) => [
+                'id' => $a->id,
+                'email' => $a->participante_email,
+                'nombre' => $a->participante_nombre,
+                'estado' => $a->estado,
+                'ingreso_at' => $a->created_at?->toIso8601String(),
+                'iniciado_at' => $a->intento?->iniciado_at?->toIso8601String(),
+                'finalizado_at' => $a->intento?->finalizado_at?->toIso8601String(),
+                'puntaje' => $a->intento?->puntaje,
+                // Misma hoja de resultados de la ficha del candidato (sin filtro de proceso).
+                'asignacion' => [
+                    'id' => $a->id,
+                    'prueba' => [
+                        'nombre' => $a->prueba->nombre, 'version' => $a->prueba->version, 'validada' => $a->prueba->validada,
+                        'tipo' => $a->prueba->tipo, 'origen' => $a->prueba->empresa_id === null ? 'agento' : 'empresa',
+                    ],
+                    'estado' => $a->estado,
+                    'disponible_hasta' => $a->disponible_hasta?->toIso8601String(),
+                    'intento' => $a->intento ? [
+                        'finalizado_at' => $a->intento->finalizado_at?->toIso8601String(),
+                        'cierre' => $a->intento->cierre,
+                        'puntaje' => $a->intento->puntaje,
+                    ] : null,
+                    'resultado' => app(\App\Modules\Reclutamiento\Application\ResultadoPruebaService::class)->hoja($a, null),
+                ],
+            ])->values(),
+        ];
     }
 
     public function update(PruebaRequest $request, Prueba $prueba): PruebaResource

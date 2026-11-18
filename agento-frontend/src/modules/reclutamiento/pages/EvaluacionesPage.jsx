@@ -1,6 +1,7 @@
-import { DownloadOutlined, EyeOutlined, PlusOutlined, SnippetsOutlined, UploadOutlined } from '@ant-design/icons';
+import { DownloadOutlined, EyeOutlined, LinkOutlined, PlusOutlined, SnippetsOutlined, UploadOutlined } from '@ant-design/icons';
 import { App, Button, Dropdown, Input, Modal, Select, Space, Table, Tag, Upload } from 'antd';
 import { useMemo, useState } from 'react';
+import EnlacePruebaModal from '../components/EnlacePruebaModal';
 import EstadoSeccion from '../components/EstadoSeccion';
 import MotivoModal from '../components/MotivoModal';
 import PruebaEditorModal from '../components/PruebaEditorModal';
@@ -60,6 +61,7 @@ export default function EvaluacionesPage({ user }) {
     return false;
   };
 
+  const [enlacePrueba, setEnlacePrueba] = useState(null);
   const [vistaPrueba, setVistaPrueba] = useState({ abierto: false, prueba: null, cargando: false, error: null });
   const verPreguntas = async (id) => {
     setVistaPrueba({ abierto: true, prueba: null, cargando: true, error: null });
@@ -107,6 +109,7 @@ export default function EvaluacionesPage({ user }) {
         );
         setEditor({ abierto: true, prueba: nueva, inicial: null, advertencias: [] });
       }
+      if (key === 'enlace') setEnlacePrueba(prueba);
       if (key === 'validar') setValidando(prueba);
       if (key === 'desactivar') {
         modal.confirm({
@@ -201,6 +204,7 @@ export default function EvaluacionesPage({ user }) {
                 const items = [
                   ...(p.estado === 'borrador' ? [{ key: 'editar', label: 'Editar' }, { key: 'publicar', label: 'Publicar' }] : []),
                   ...(p.estado === 'publicada' ? [{ key: 'version', label: 'Editar (crea una nueva versión)' }] : []),
+                  ...(p.estado === 'publicada' ? [{ key: 'enlace', icon: <LinkOutlined />, label: 'Enlace para rendir (Google)' }] : []),
                   ...(p.estado === 'publicada' && !p.validada ? [{ key: 'validar', label: 'Registrar validación' }] : []),
                   ...(p.estado !== 'archivada' ? [{ key: 'desactivar', label: 'Desactivar' }] : [{ key: 'activar', label: 'Activar' }]),
                   { type: 'divider' },
@@ -233,6 +237,9 @@ export default function EvaluacionesPage({ user }) {
         cargando={vistaPrueba.cargando}
         error={vistaPrueba.error}
         onCerrar={() => setVistaPrueba({ abierto: false, prueba: null, cargando: false, error: null })}
+        onEnlace={vistaPrueba.prueba?.estado === 'publicada' && puedeGestionar(vistaPrueba.prueba)
+          ? (prueba) => setEnlacePrueba(prueba)
+          : undefined}
         onEditar={vistaPrueba.prueba && vistaPrueba.prueba.estado !== 'archivada' && puedeGestionar(vistaPrueba.prueba)
           ? (prueba) => {
             setVistaPrueba({ abierto: false, prueba: null, cargando: false, error: null });
@@ -240,6 +247,7 @@ export default function EvaluacionesPage({ user }) {
           }
           : undefined}
       />
+      <EnlacePruebaModal prueba={enlacePrueba} acciones={acciones} onCerrar={() => setEnlacePrueba(null)} />
       <PruebaEditorModal
         abierto={editor.abierto}
         prueba={editor.prueba}
