@@ -109,7 +109,7 @@ class PruebaController extends SeleccionController
     }
 
     /**
-     * Enlace compartible (inicio de sesión con Google) y quiénes lo rindieron.
+     * Enlace compartible de la prueba y quiénes la rindieron.
      */
     public function enlace(Request $request, Prueba $prueba): JsonResponse
     {
@@ -145,6 +145,7 @@ class PruebaController extends SeleccionController
                 'id' => $a->id,
                 'email' => $a->participante_email,
                 'nombre' => $a->participante_nombre,
+                'documento' => $a->participante_documento,
                 'estado' => $a->estado,
                 'ingreso_at' => $a->created_at?->toIso8601String(),
                 'iniciado_at' => $a->intento?->iniciado_at?->toIso8601String(),

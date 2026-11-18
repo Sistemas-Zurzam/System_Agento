@@ -204,7 +204,7 @@ export default function EvaluacionesPage({ user }) {
                 const items = [
                   ...(p.estado === 'borrador' ? [{ key: 'editar', label: 'Editar' }, { key: 'publicar', label: 'Publicar' }] : []),
                   ...(p.estado === 'publicada' ? [{ key: 'version', label: 'Editar (crea una nueva versión)' }] : []),
-                  ...(p.estado === 'publicada' ? [{ key: 'enlace', icon: <LinkOutlined />, label: 'Enlace para rendir (Google)' }] : []),
+                  ...(p.estado === 'publicada' ? [{ key: 'enlace', icon: <LinkOutlined />, label: 'Enlace para rendir' }] : []),
                   ...(p.estado === 'publicada' && !p.validada ? [{ key: 'validar', label: 'Registrar validación' }] : []),
                   ...(p.estado !== 'archivada' ? [{ key: 'desactivar', label: 'Desactivar' }] : [{ key: 'activar', label: 'Activar' }]),
                   { type: 'divider' },

@@ -28,12 +28,6 @@ return [
         'region' => env('AWS_DEFAULT_REGION', 'us-east-1'),
     ],
 
-    // Inicio de sesión con Google en los enlaces públicos de pruebas: el
-    // backend valida que el token emitido sea para este client id.
-    'google' => [
-        'client_id' => env('GOOGLE_CLIENT_ID'),
-    ],
-
     'slack' => [
         'notifications' => [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),

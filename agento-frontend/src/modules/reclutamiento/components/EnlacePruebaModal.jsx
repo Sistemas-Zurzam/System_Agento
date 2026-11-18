@@ -17,8 +17,8 @@ const ESTADOS = {
 const fecha = (valor) => (valor ? dayjs(valor).format('DD/MM/YYYY HH:mm') : '—');
 
 /**
- * Enlace compartible de una prueba: quien lo abre inicia sesión con Google.
- * Aquí RR. HH. lo copia y ve quién lo rindió (correo de Google).
+ * Enlace compartible de una prueba: quien lo abre registra sus datos y la rinde.
+ * Aquí RR. HH. lo copia y ve quién la rindió y su resultado.
  */
 export default function EnlacePruebaModal({ prueba, acciones, onCerrar }) {
   const { message } = App.useApp();
@@ -69,8 +69,8 @@ export default function EnlacePruebaModal({ prueba, acciones, onCerrar }) {
       {datos && !cargando && (
         <div className="space-y-4">
           <p className="text-sm text-gray-600">
-            Comparte este enlace. Quien lo abra inicia sesión con su cuenta de Google y rinde la prueba; su correo queda registrado
-            y cada cuenta puede rendirla una sola vez.
+            Comparte este enlace. Quien lo abra escribe su nombre, correo y documento, rinde la prueba y el resultado queda aquí.
+            Cada correo puede rendirla una sola vez.
           </p>
           <Space.Compact className="w-full">
             <Input readOnly value={datos.url} onFocus={(e) => e.target.select()} aria-label="Enlace de la prueba" />
@@ -107,8 +107,9 @@ export default function EnlacePruebaModal({ prueba, acciones, onCerrar }) {
                 expandedRowRender: (r) => <HojaResultadosPrueba asignacion={r.asignacion} puedeConcluir={false} />,
               }}
               columns={[
-                { title: 'Correo de Google', dataIndex: 'email' },
                 { title: 'Nombre', dataIndex: 'nombre', render: (v) => v ?? '—' },
+                { title: 'Documento', dataIndex: 'documento', render: (v) => v ?? '—' },
+                { title: 'Correo', dataIndex: 'email' },
                 { title: 'Estado', dataIndex: 'estado', render: (e) => <Tag color={ESTADOS[e]?.color}>{ESTADOS[e]?.label ?? e}</Tag> },
                 { title: 'Ingresó', dataIndex: 'ingreso_at', render: fecha },
                 { title: 'Terminó', dataIndex: 'finalizado_at', render: fecha },

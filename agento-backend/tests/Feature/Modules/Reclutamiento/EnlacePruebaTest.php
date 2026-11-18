@@ -5,27 +5,22 @@ namespace Tests\Feature\Modules\Reclutamiento;
 use App\Models\User;
 use App\Modules\Reclutamiento\Models\PruebaAsignacion;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Http\Client\Factory as HttpFactory;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Facades\Http;
 use Tests\Concerns\CreaEscenarioSeleccion;
 use Tests\TestCase;
 
 /**
- * Enlace compartido de una prueba: quien lo abre inicia sesión con Google y
- * queda registrado su correo; cada correo tiene un único intento.
+ * Enlace compartido de una prueba: quien lo abre declara nombre, correo y
+ * documento, rinde la prueba y RR. HH. recibe el resultado; un intento por correo.
  */
-class EnlacePruebaGoogleTest extends TestCase
+class EnlacePruebaTest extends TestCase
 {
     use CreaEscenarioSeleccion, RefreshDatabase;
-
-    private const CLIENT_ID = 'cliente-123.apps.googleusercontent.com';
 
     protected function setUp(): void
     {
         parent::setUp();
         $this->prepararSeleccion();
-        config(['services.google.client_id' => self::CLIENT_ID]);
     }
 
     /**
@@ -56,14 +51,9 @@ class EnlacePruebaGoogleTest extends TestCase
         $this->withHeaders($headers)->postJson("/api/seleccion/pruebas/{$prueba['id']}/publicar")->assertOk();
     }
 
-    private function fingirGoogle(string $email = 'ana@gmail.com', array $extra = []): void
+    private function registro(string $email = 'ana@gmail.com', array $extra = []): array
     {
-        // Un fake nuevo no reemplaza al anterior: se parte de un cliente limpio.
-        Http::swap(new HttpFactory);
-        Http::fake(['oauth2.googleapis.com/*' => Http::response([
-            'aud' => self::CLIENT_ID, 'iss' => 'https://accounts.google.com', 'sub' => '1122',
-            'email' => $email, 'email_verified' => 'true', 'name' => 'Ana Torres', ...$extra,
-        ])]);
+        return ['nombre' => 'Ana Torres', 'email' => $email, 'documento' => '45678912', ...$extra];
     }
 
     private function tokenDelEnlace(string $url): string
@@ -86,7 +76,7 @@ class EnlacePruebaGoogleTest extends TestCase
         $this->assertSame($url, $this->withHeaders($headers)->postJson("/api/seleccion/pruebas/{$prueba['id']}/enlace")->json('data.url'));
     }
 
-    public function test_con_google_se_registra_quien_rinde_y_retoma_su_unico_intento(): void
+    public function test_el_postulante_se_registra_rinde_y_rrhh_recibe_el_resultado(): void
     {
         ['headers' => $headers, 'prueba' => $prueba] = $this->pruebaPublicada();
         $this->publicar($headers, $prueba);
@@ -94,61 +84,46 @@ class EnlacePruebaGoogleTest extends TestCase
 
         $this->getJson("/api/publico/evaluaciones/{$token}")->assertOk()->assertJsonPath('data.nombre', 'Conocimientos de caja');
 
-        $this->fingirGoogle();
-        $acceso = $this->postJson("/api/publico/evaluaciones/{$token}/acceso", ['credencial' => 'jwt'])
+        $acceso = $this->postJson("/api/publico/evaluaciones/{$token}/acceso", $this->registro('Ana@Gmail.com'))
             ->assertOk()->assertJsonPath('data.email', 'ana@gmail.com')->json('data');
 
         $this->getJson("/api/publico/pruebas/{$acceso['token']}")->assertOk();
         $this->postJson("/api/publico/pruebas/{$acceso['token']}/iniciar")->assertOk();
-
-        // Volver a entrar con la misma cuenta reutiliza la misma asignación.
-        $otro = $this->postJson("/api/publico/evaluaciones/{$token}/acceso", ['credencial' => 'jwt'])->assertOk()->json('data.token');
-        $this->assertSame(1, PruebaAsignacion::withoutGlobalScopes()->count());
-        $this->getJson("/api/publico/pruebas/{$acceso['token']}")->assertNotFound();
-        $this->getJson("/api/publico/pruebas/{$otro}")->assertOk()->assertJsonPath('data.intento.finalizado', false);
-
-        $this->postJson("/api/publico/pruebas/{$otro}/finalizar")->assertOk();
-        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", ['credencial' => 'jwt'])->assertOk();
+        $this->postJson("/api/publico/pruebas/{$acceso['token']}/finalizar")->assertOk();
         $this->assertSame(PruebaAsignacion::FINALIZADA, PruebaAsignacion::withoutGlobalScopes()->first()->estado);
 
-        // RR. HH. ve quién la rindió.
         $participantes = $this->withHeaders($headers)->getJson("/api/seleccion/pruebas/{$prueba['id']}/enlace")->assertOk()->json('data.participantes');
         $this->assertCount(1, $participantes);
         $this->assertSame('ana@gmail.com', $participantes[0]['email']);
+        $this->assertSame('45678912', $participantes[0]['documento']);
         $this->assertSame('finalizada', $participantes[0]['estado']);
         $this->assertSame('Conocimientos de caja', $participantes[0]['asignacion']['prueba']['nombre']);
         $this->assertNotEmpty($participantes[0]['asignacion']['resultado']['dimensiones'], 'RR. HH. ve el resultado por dimensión');
     }
 
-    public function test_dos_cuentas_distintas_tienen_cada_una_su_intento(): void
+    public function test_un_correo_ya_registrado_no_recupera_el_acceso_de_otra_persona(): void
     {
         ['headers' => $headers, 'prueba' => $prueba] = $this->pruebaPublicada();
         $this->publicar($headers, $prueba);
         $token = $this->tokenDelEnlace($this->withHeaders($headers)->postJson("/api/seleccion/pruebas/{$prueba['id']}/enlace")->json('data.url'));
 
-        $this->fingirGoogle('ana@gmail.com');
-        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", ['credencial' => 'jwt'])->assertOk();
-        $this->fingirGoogle('luis@gmail.com');
-        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", ['credencial' => 'jwt'])->assertOk();
+        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", $this->registro())->assertOk();
+        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", $this->registro('ANA@gmail.com'))->assertUnprocessable()->assertJsonValidationErrors('email');
+        $this->assertSame(1, PruebaAsignacion::withoutGlobalScopes()->count());
 
+        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", $this->registro('luis@gmail.com', ['nombre' => 'Luis Pérez']))->assertOk();
         $this->assertSame(2, PruebaAsignacion::withoutGlobalScopes()->count());
     }
 
-    public function test_se_rechaza_una_credencial_que_no_es_de_esta_aplicacion_o_sin_correo_verificado(): void
+    public function test_se_exigen_nombre_correo_y_documento_validos(): void
     {
         ['headers' => $headers, 'prueba' => $prueba] = $this->pruebaPublicada();
         $this->publicar($headers, $prueba);
         $token = $this->tokenDelEnlace($this->withHeaders($headers)->postJson("/api/seleccion/pruebas/{$prueba['id']}/enlace")->json('data.url'));
 
-        $this->fingirGoogle(extra: ['aud' => 'otra-app.apps.googleusercontent.com']);
-        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", ['credencial' => 'jwt'])->assertUnprocessable();
-
-        $this->fingirGoogle(extra: ['email_verified' => 'false']);
-        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", ['credencial' => 'jwt'])->assertUnprocessable();
-
-        Http::swap(new HttpFactory);
-        Http::fake(['oauth2.googleapis.com/*' => Http::response(['error' => 'invalid_token'], 400)]);
-        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", ['credencial' => 'falso'])->assertUnprocessable();
+        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", [])->assertUnprocessable()->assertJsonValidationErrors(['nombre', 'email', 'documento']);
+        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", $this->registro('no-es-correo'))->assertUnprocessable()->assertJsonValidationErrors('email');
+        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", $this->registro(extra: ['documento' => '12 34;']))->assertUnprocessable()->assertJsonValidationErrors('documento');
 
         $this->assertSame(0, PruebaAsignacion::withoutGlobalScopes()->count());
     }
@@ -163,7 +138,6 @@ class EnlacePruebaGoogleTest extends TestCase
 
         $this->withHeaders($headers)->deleteJson("/api/seleccion/pruebas/{$prueba['id']}/enlace")->assertOk()->assertJsonPath('data.activo', false);
         $this->getJson("/api/publico/evaluaciones/{$token}")->assertNotFound();
-        $this->fingirGoogle();
-        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", ['credencial' => 'jwt'])->assertNotFound();
+        $this->postJson("/api/publico/evaluaciones/{$token}/acceso", $this->registro())->assertNotFound();
     }
 }

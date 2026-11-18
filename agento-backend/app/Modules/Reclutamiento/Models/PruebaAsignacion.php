@@ -13,7 +13,7 @@ use Illuminate\Database\Eloquent\Relations\HasOne;
 #[ScopedBy([EmpresaScope::class])]
 #[Hidden(['token_hash'])]
 #[Fillable(['empresa_id', 'postulacion_id', 'prueba_id', 'token_hash', 'disponible_hasta', 'estado', 'asignado_por',
-    'enlace_id', 'participante_email', 'participante_nombre', 'participante_google_sub'])]
+    'enlace_id', 'participante_email', 'participante_nombre', 'participante_documento'])]
 class PruebaAsignacion extends Model
 {
     public const PENDIENTE = 'pendiente';

@@ -1,69 +1,24 @@
-import { Alert, Button, Card, Result, Spin } from 'antd';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Alert, Button, Card, Form, Input, Result, Spin } from 'antd';
+import { useEffect, useState } from 'react';
 import { portalEmpleosApi } from '../services/portalEmpleosApi';
 import RendirPrueba from './RendirPrueba';
 
-const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
-const SCRIPT_GOOGLE = 'https://accounts.google.com/gsi/client';
-
-let cargaScript;
-function cargarGoogle() {
-  if (window.google?.accounts?.id) return Promise.resolve();
-  cargaScript ??= new Promise((resolve, reject) => {
-    const script = document.createElement('script');
-    script.src = SCRIPT_GOOGLE;
-    script.async = true;
-    script.onload = resolve;
-    script.onerror = () => {
-      cargaScript = undefined;
-      reject(new Error('No se pudo cargar Google'));
-    };
-    document.head.appendChild(script);
-  });
-  return cargaScript;
-}
-
-function BotonGoogle({ onCredencial, deshabilitado }) {
-  const contenedor = useRef(null);
-  const [fallo, setFallo] = useState(false);
-
-  useEffect(() => {
-    let activo = true;
-    cargarGoogle()
-      .then(() => {
-        if (!activo || !contenedor.current) return;
-        window.google.accounts.id.initialize({
-          client_id: GOOGLE_CLIENT_ID,
-          callback: (respuesta) => onCredencial(respuesta.credential),
-        });
-        window.google.accounts.id.renderButton(contenedor.current, {
-          theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', locale: 'es',
-        });
-      })
-      .catch(() => activo && setFallo(true));
-    return () => { activo = false; };
-  }, [onCredencial]);
-
-  if (fallo) return <Alert type="error" showIcon message="No se pudo cargar el inicio de sesión de Google. Revisa tu conexión y recarga la página." />;
-
-  return <div ref={contenedor} className={deshabilitado ? 'pointer-events-none opacity-50' : undefined} aria-busy={deshabilitado} />;
-}
-
 /**
- * Enlace compartido de una prueba: el participante inicia sesión con Google
- * (queda registrado su correo) y rinde la prueba con su asignación personal.
- * El token de la asignación se guarda solo en sessionStorage para sobrevivir
- * a una recarga; si no está disponible, vuelve a pedir el inicio de sesión.
+ * Enlace compartido de una prueba: el postulante declara nombre, correo y
+ * documento y rinde la prueba; el resultado lo recibe Agento. El token de su
+ * asignación se guarda en este dispositivo (localStorage) para poder retomar
+ * la prueba si recarga o cierra la pestaña: el servidor no lo vuelve a
+ * entregar, así nadie retoma el intento de otra persona con solo su correo.
  */
 export default function EvaluacionPorEnlace({ token }) {
   const clave = `agento_evaluacion_${token}`;
   const [info, setInfo] = useState(null);
   const [errorInfo, setErrorInfo] = useState(false);
   const [error, setError] = useState(null);
-  const [validando, setValidando] = useState(false);
+  const [enviando, setEnviando] = useState(false);
   const [participante, setParticipante] = useState(() => {
     try {
-      const guardado = sessionStorage.getItem(clave);
+      const guardado = localStorage.getItem(clave);
       return guardado ? JSON.parse(guardado) : null;
     } catch {
       return null;
@@ -74,32 +29,23 @@ export default function EvaluacionPorEnlace({ token }) {
     portalEmpleosApi.evaluacion(token).then(setInfo).catch(() => setErrorInfo(true));
   }, [token]);
 
-  const alCredencial = useCallback(async (credencial) => {
-    setValidando(true);
+  const registrar = async (valores) => {
+    setEnviando(true);
     setError(null);
     try {
-      const datos = await portalEmpleosApi.accesoEvaluacion(token, credencial);
+      const datos = await portalEmpleosApi.accesoEvaluacion(token, valores);
       try {
-        sessionStorage.setItem(clave, JSON.stringify(datos));
+        localStorage.setItem(clave, JSON.stringify(datos));
       } catch {
-        // Sin almacenamiento: la sesión vive solo mientras no se recargue.
+        // Sin almacenamiento: no podrá retomar si recarga la página.
       }
       setParticipante(datos);
     } catch (e) {
-      setError(e?.response?.data?.message ?? e?.response?.data?.errors?.credencial?.[0] ?? 'No se pudo verificar tu cuenta de Google. Inténtalo de nuevo.');
+      const errores = e?.response?.data?.errors;
+      setError(errores ? Object.values(errores).flat()[0] : (e?.response?.data?.message ?? 'No se pudo registrar tu ingreso. Inténtalo de nuevo.'));
     } finally {
-      setValidando(false);
+      setEnviando(false);
     }
-  }, [token, clave]);
-
-  const cambiarCuenta = () => {
-    try {
-      sessionStorage.removeItem(clave);
-    } catch {
-      // Nada que limpiar.
-    }
-    window.google?.accounts?.id?.disableAutoSelect();
-    setParticipante(null);
   };
 
   if (errorInfo) {
@@ -110,10 +56,7 @@ export default function EvaluacionPorEnlace({ token }) {
   if (participante) {
     return (
       <div className="space-y-3">
-        <div className="mx-auto flex max-w-2xl flex-wrap items-center justify-between gap-2 text-sm text-gray-500">
-          <span>Sesión: <strong className="text-gray-700">{participante.email}</strong></span>
-          <Button type="link" size="small" onClick={cambiarCuenta}>No soy yo</Button>
-        </div>
+        <p className="mx-auto max-w-2xl text-sm text-gray-500">Participante: <strong className="text-gray-700">{participante.nombre}</strong> ({participante.email})</p>
         <RendirPrueba token={participante.token} />
       </div>
     );
@@ -127,12 +70,21 @@ export default function EvaluacionPorEnlace({ token }) {
         className="my-4"
         type="info"
         showIcon
-        message={`Duración: ${info.tiempo_limite_minutos} minutos desde que inicies. Inicia sesión con tu cuenta de Google: tu correo quedará registrado y solo puedes rendirla una vez.`}
+        message={`Duración: ${info.tiempo_limite_minutos} minutos desde que inicies. Completa tus datos para comenzar; solo puedes rendirla una vez.`}
       />
-      {!GOOGLE_CLIENT_ID
-        ? <Alert type="error" showIcon message="El inicio de sesión con Google no está configurado. Avisa al equipo de selección." />
-        : <BotonGoogle onCredencial={alCredencial} deshabilitado={validando} />}
-      {error && <Alert className="mt-3" type="error" showIcon message={error} />}
+      <Form layout="vertical" onFinish={registrar} requiredMark={false} disabled={enviando}>
+        <Form.Item name="nombre" label="Nombres y apellidos" rules={[{ required: true, min: 3, message: 'Escribe tu nombre completo.' }]}>
+          <Input maxLength={120} autoComplete="name" />
+        </Form.Item>
+        <Form.Item name="email" label="Correo electrónico" rules={[{ required: true, type: 'email', message: 'Escribe un correo válido.' }]}>
+          <Input maxLength={150} autoComplete="email" inputMode="email" />
+        </Form.Item>
+        <Form.Item name="documento" label="Documento de identidad (DNI o CE)" rules={[{ required: true, pattern: /^[A-Za-z0-9-]{6,20}$/, message: 'Escribe tu documento sin espacios (6 a 20 caracteres).' }]}>
+          <Input maxLength={20} autoComplete="off" />
+        </Form.Item>
+        {error && <Alert className="mb-3" type="error" showIcon message={error} />}
+        <Button type="primary" htmlType="submit" loading={enviando} block>Comenzar evaluación</Button>
+      </Form>
     </Card>
   );
 }

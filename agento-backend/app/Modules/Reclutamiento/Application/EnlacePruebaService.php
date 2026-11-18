@@ -4,7 +4,6 @@ namespace App\Modules\Reclutamiento\Application;
 
 use App\Modules\Reclutamiento\Domain\TransicionInvalidaException;
 use App\Modules\Reclutamiento\Infrastructure\CorreoReclutamiento;
-use App\Modules\Reclutamiento\Infrastructure\VerificadorGoogle;
 use App\Modules\Reclutamiento\Models\Prueba;
 use App\Modules\Reclutamiento\Models\PruebaAsignacion;
 use App\Modules\Reclutamiento\Models\PruebaEnlace;
@@ -15,21 +14,20 @@ use Illuminate\Validation\ValidationException;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 /**
- * Enlace compartible de una prueba con inicio de sesión de Google.
+ * Enlace compartible de una prueba, sin cuenta ni login.
  *
  * - RR. HH. obtiene UN enlace por prueba y empresa (estable: se puede
  *   reenviar). Para pruebas del banco de Agento, el enlace queda en la
  *   empresa de quien lo genera y es ahí donde ve a los participantes.
- * - Quien lo abre se identifica con Google; se crea (o reutiliza) su
- *   asignación propia. Un participante = un correo = un único intento: volver
- *   a entrar con la misma cuenta retoma el intento, no lo reinicia.
+ * - Quien lo abre declara nombre, correo y documento; se crea su asignación
+ *   propia. Un correo = un único intento. Como el correo es declarado (no
+ *   verificado), volver a registrarlo NO entrega el acceso de nuevo: quien
+ *   ya ingresó retoma desde su mismo dispositivo, que conserva el token.
  * - Desde ahí la prueba se rinde con el flujo normal por token de asignación.
  */
 class EnlacePruebaService
 {
     public function __construct(
-        private readonly VerificadorGoogle $google,
-        private readonly AplicacionPruebaService $aplicacion,
         private readonly CorreoReclutamiento $correo,
     ) {}
 
@@ -86,26 +84,43 @@ class EnlacePruebaService
     }
 
     /**
-     * Identifica al participante con Google y devuelve el token de SU
-     * asignación (se emite uno nuevo en cada ingreso; el anterior deja de
-     * servir, igual que "regenerar enlace" del candidato).
+     * Registra al participante (datos declarados) y devuelve el token de SU
+     * asignación, con el que rinde la prueba. El token solo se entrega al
+     * crearla: un correo ya registrado no la recupera (evita que otra
+     * persona retome o vea el intento de alguien más escribiendo su correo).
      *
+     * @param  array{nombre: string, email: string, documento: string}  $datos
      * @return array{token: string, asignacion: PruebaAsignacion}
      */
-    public function acceder(string $token, string $credencial): array
+    public function acceder(string $token, array $datos): array
     {
         $enlace = $this->enlaceVigente($token);
-        $persona = $this->google->verificar($credencial);
+        $email = mb_strtolower(trim($datos['email']));
+        $yaIngreso = ValidationException::withMessages(['email' => 'Este correo ya ingresó a la evaluación. Si necesitas retomarla, hazlo desde el mismo dispositivo y navegador, o pide ayuda al equipo de selección.']);
 
-        $asignacion = $this->asignacionDe($enlace, $persona);
+        $existe = fn () => PruebaAsignacion::withoutGlobalScopes()->where('enlace_id', $enlace->id)->where('participante_email', $email)->exists();
+        if ($existe()) {
+            throw $yaIngreso;
+        }
 
-        if (in_array($asignacion->estado, [PruebaAsignacion::PENDIENTE, PruebaAsignacion::EN_CURSO], true)) {
-            $acceso = $this->aplicacion->regenerarToken($asignacion);
-        } else {
-            // Ya finalizada o vencida: se entrega un token solo para mostrar
-            // el estado (no permite rendirla de nuevo).
-            $acceso = Str::random(64);
-            $asignacion->forceFill(['token_hash' => hash('sha256', $acceso)])->save();
+        $acceso = Str::random(64);
+        try {
+            $asignacion = PruebaAsignacion::withoutGlobalScopes()->create([
+                'empresa_id' => $enlace->empresa_id,
+                'postulacion_id' => null,
+                'prueba_id' => $enlace->prueba_id,
+                'enlace_id' => $enlace->id,
+                'participante_email' => $email,
+                'participante_nombre' => trim($datos['nombre']),
+                'participante_documento' => trim($datos['documento']),
+                'token_hash' => hash('sha256', $acceso),
+                'disponible_hasta' => now()->addDays((int) config('reclutamiento.pruebas.dias_para_iniciar', 5))->endOfDay(),
+                'estado' => PruebaAsignacion::PENDIENTE,
+                'asignado_por' => $enlace->creado_por,
+            ]);
+        } catch (QueryException $e) {
+            // Doble clic / dos pestañas a la vez: ganó la otra petición.
+            throw $existe() ? $yaIngreso : $e;
         }
 
         return ['token' => $acceso, 'asignacion' => $asignacion];
@@ -122,41 +137,6 @@ class EnlacePruebaService
         }
 
         return $enlace;
-    }
-
-    /**
-     * @param  array{email: string, nombre: ?string, sub: string}  $persona
-     */
-    private function asignacionDe(PruebaEnlace $enlace, array $persona): PruebaAsignacion
-    {
-        $buscar = fn () => PruebaAsignacion::withoutGlobalScopes()
-            ->where('enlace_id', $enlace->id)->where('participante_email', $persona['email'])->first();
-
-        if ($existente = $buscar()) {
-            return $existente;
-        }
-
-        try {
-            return PruebaAsignacion::withoutGlobalScopes()->create([
-                'empresa_id' => $enlace->empresa_id,
-                'postulacion_id' => null,
-                'prueba_id' => $enlace->prueba_id,
-                'enlace_id' => $enlace->id,
-                'participante_email' => $persona['email'],
-                'participante_nombre' => $persona['nombre'],
-                'participante_google_sub' => $persona['sub'],
-                'token_hash' => hash('sha256', Str::random(64)),
-                'disponible_hasta' => now()->addDays((int) config('reclutamiento.pruebas.dias_para_iniciar', 5))->endOfDay(),
-                'estado' => PruebaAsignacion::PENDIENTE,
-                'asignado_por' => $enlace->creado_por,
-            ]);
-        } catch (QueryException) {
-            // Doble clic / dos pestañas a la vez: ganó la otra petición.
-            if ($existente = $buscar()) {
-                return $existente;
-            }
-            throw ValidationException::withMessages(['credencial' => 'No se pudo registrar tu participación. Inténtalo de nuevo.']);
-        }
     }
 
     private function url(PruebaEnlace $enlace): string

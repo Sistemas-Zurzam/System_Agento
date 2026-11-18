@@ -9,8 +9,8 @@ use Illuminate\Http\Request;
 
 /**
  * Enlace compartido de una prueba: pantalla previa (nombre y duración) y
- * acceso con Google, que entrega el token de la asignación personal para
- * rendirla con /publico/pruebas/{token}.
+ * registro del participante (nombre, correo y documento), que entrega el
+ * token de su asignación personal para rendirla con /publico/pruebas/{token}.
  */
 class EnlacePruebaPublicoController extends Controller
 {
@@ -29,8 +29,12 @@ class EnlacePruebaPublicoController extends Controller
 
     public function acceso(Request $request, string $token): JsonResponse
     {
-        $datos = $request->validate(['credencial' => ['required', 'string', 'max:4096']]);
-        $acceso = $this->enlaces->acceder($token, $datos['credencial']);
+        $datos = $request->validate([
+            'nombre' => ['required', 'string', 'min:3', 'max:120'],
+            'email' => ['required', 'email:rfc', 'max:150'],
+            'documento' => ['required', 'string', 'min:6', 'max:20', 'regex:/^[A-Za-z0-9\-]+$/'],
+        ]);
+        $acceso = $this->enlaces->acceder($token, $datos);
 
         return response()->json(['data' => [
             'token' => $acceso['token'],
