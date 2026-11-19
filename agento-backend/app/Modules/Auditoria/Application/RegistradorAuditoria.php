@@ -81,6 +81,25 @@ class RegistradorAuditoria
         return count($eventos);
     }
 
+    /**
+     * Evento de derechos ARCO o de consentimiento. Lo origina el candidato (sin usuario: $actor es un
+     * identificador, nunca datos personales) o RR. HH. ($usuario). Solo identificadores en $payload.
+     *
+     * @param  array<string, mixed>  $payload
+     */
+    public function arco(Request $request, ?int $empresaId, ?string $actor, string $accion, array $payload = [], ?User $usuario = null): void
+    {
+        $this->crear($usuario, [
+            'tipo' => AuditoriaEvento::TIPO_ARCO,
+            'accion' => $accion,
+            'modulo' => 'seleccion',
+            'metodo' => $request->method(),
+            'ruta' => Str::limit($request->path(), 250, ''),
+            'payload' => $this->sanitizador->payload($payload),
+            ...($usuario ? [] : ['empresa_id' => $empresaId]),
+        ], $request, $usuario ? null : $actor);
+    }
+
     private function registrarLogin(Request $request, int $estado, ?User $usuario, float $inicio): void
     {
         $identificador = (string) $request->input('login');

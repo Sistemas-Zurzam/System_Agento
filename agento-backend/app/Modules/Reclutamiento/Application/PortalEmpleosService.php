@@ -9,6 +9,7 @@ use App\Modules\Reclutamiento\Jobs\EvaluarPostulacionJob;
 use App\Modules\Reclutamiento\Models\AccesoCandidato;
 use App\Modules\Reclutamiento\Models\Candidato;
 use App\Modules\Reclutamiento\Models\Consentimiento;
+use App\Modules\Reclutamiento\Models\TextoLegal;
 use App\Modules\Reclutamiento\Models\Invitacion;
 use App\Modules\Reclutamiento\Models\PerfilProceso;
 use App\Modules\Reclutamiento\Models\Postulacion;
@@ -37,6 +38,7 @@ class PortalEmpleosService
         private readonly CorreoReclutamiento $correo,
         private readonly RegistroActividad $actividad,
         private readonly EnvioAutomaticoPruebas $envios,
+        private readonly TextosLegalesService $textosLegales,
     ) {}
 
     public function listar(array $filtros, int $perPage): LengthAwarePaginator
@@ -112,10 +114,18 @@ class PortalEmpleosService
         $perfil = $proceso->perfilVigente;
         $this->validarDeclaraciones($perfil, $datos['requisitos'] ?? []);
 
+        // Lo aceptado debe ser exactamente el texto legal vigente (422 si cambió).
+        $textoLegal = $this->textosLegales->verificarAceptacion(
+            TextoLegal::CONSENTIMIENTO_POSTULACION,
+            $datos['consentimiento_version'] ?? null,
+            $datos['consentimiento_hash'] ?? null,
+            (string) $datos['consentimiento_texto'],
+        );
+
         $archivosGuardados = [];
 
         try {
-            $postulacion = DB::transaction(function () use ($proceso, $invitacion, $acceso, $datos, $cv, $ip, $perfil, $complementarios, &$archivosGuardados) {
+            $postulacion = DB::transaction(function () use ($proceso, $invitacion, $acceso, $datos, $cv, $ip, $perfil, $complementarios, $textoLegal, &$archivosGuardados) {
                 $candidato = Candidato::firstOrNew(['empresa_id' => $proceso->empresa_id, 'email' => $acceso->email]);
                 $candidato->fill([
                     'email_verificado_at' => now(),
@@ -147,8 +157,9 @@ class PortalEmpleosService
                 Consentimiento::create([
                     'empresa_id' => $proceso->empresa_id,
                     'candidato_id' => $candidato->id,
-                    'version' => config('reclutamiento.consentimiento.version'),
-                    'texto_hash' => hash('sha256', (string) $datos['consentimiento_texto']),
+                    'version' => $textoLegal->version,
+                    'texto_hash' => $textoLegal->hash,
+                    'texto_legal_id' => $textoLegal->id,
                     'aceptado_at' => now(),
                     'ip' => $ip,
                 ]);

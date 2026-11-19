@@ -68,6 +68,9 @@ class PostularRequest extends FormRequest
             'cul' => ['nullable', 'file', 'mimes:pdf,jpg,jpeg,png', "max:{$maxKb}"],
             'consentimiento' => ['accepted'],
             'consentimiento_texto' => ['required', 'string', 'max:10000'],
+            // Opcionales: versión y hash del texto que el cliente mostró (se verifican contra el vigente).
+            'consentimiento_version' => ['nullable', 'string', 'max:30'],
+            'consentimiento_hash' => ['nullable', 'string', 'size:64'],
         ];
     }
 

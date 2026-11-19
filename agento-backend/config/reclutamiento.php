@@ -61,6 +61,16 @@ return [
         'excluir_contratados' => (bool) env('RECLUTAMIENTO_RETENCION_EXCLUIR_CONTRATADOS', true),
     ],
 
+    // Derechos ARCO (Ley 29733). Plazos en DÍAS HÁBILES (lunes a viernes, sin descontar feriados).
+    // Son valores iniciales y DEBEN ser validados por un abogado (docs/legal/pendientes.md).
+    'arco' => [
+        'plazo_dias_habiles' => [
+            'acceso' => (int) env('RECLUTAMIENTO_ARCO_PLAZO_ACCESO', 20),
+            'rectificacion' => (int) env('RECLUTAMIENTO_ARCO_PLAZO_RECTIFICACION', 10),
+            'cancelacion' => (int) env('RECLUTAMIENTO_ARCO_PLAZO_CANCELACION', 10),
+        ],
+    ],
+
     // URL pública del frontend usada en correos (portal /empleos).
     'url_portal' => env('RECLUTAMIENTO_URL_PORTAL', env('FRONTEND_URL', env('APP_URL', 'http://localhost'))),
 ];

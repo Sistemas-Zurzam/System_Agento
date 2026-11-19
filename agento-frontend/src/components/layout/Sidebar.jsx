@@ -86,6 +86,7 @@ function buildMenuItems(isAdmin, puedeVerHorarios, puedeVerAsistencia, puedeVerN
     { key: 'seleccion-candidatos', label: 'Candidatos', visible: permisosSeleccion.candidatos },
     { key: 'seleccion-banco-talentos', label: 'Banco de talentos', visible: permisosSeleccion.banco },
     { key: 'seleccion-evaluaciones', label: 'Evaluaciones', visible: permisosSeleccion.evaluaciones },
+    { key: 'seleccion-arco', label: 'Derechos ARCO', visible: permisosSeleccion.banco },
   ].filter((item) => isAdmin || item.visible).map(({ key, label }) => ({ key, label }));
 
   // Sin el servicio de reclutamiento contratado por la empresa activa el

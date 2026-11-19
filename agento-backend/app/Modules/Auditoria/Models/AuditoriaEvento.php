@@ -25,6 +25,9 @@ class AuditoriaEvento extends Model
 
     public const TIPO_AUTH = 'auth';
 
+    /** Derechos ARCO y consentimiento (Ley 29733). */
+    public const TIPO_ARCO = 'arco';
+
     protected $table = 'auditoria_eventos';
 
     protected $guarded = [];

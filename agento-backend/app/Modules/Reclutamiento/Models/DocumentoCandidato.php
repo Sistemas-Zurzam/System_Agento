@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Attributes\ScopedBy;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 /**
  * Archivo inmutable en almacenamiento privado. Un CV nuevo crea otra fila;
@@ -22,5 +23,10 @@ class DocumentoCandidato extends Model
     protected function casts(): array
     {
         return ['eliminado_at' => 'datetime', 'tamano' => 'integer'];
+    }
+
+    public function candidato(): BelongsTo
+    {
+        return $this->belongsTo(Candidato::class);
     }
 }

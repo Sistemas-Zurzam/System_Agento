@@ -100,6 +100,11 @@ export const seleccionApi = {
     opciones: () => api.get('/seleccion/contratacion/opciones').then(datos),
   },
 
+  arco: {
+    listar: (params) => api.get('/seleccion/arco', { params }).then(completo),
+    atender: (id, valores) => api.post(`/seleccion/arco/${id}/atender`, valores).then(datos),
+  },
+
   banco: {
     listar: (params) => api.get('/seleccion/banco-talentos', { params }).then(completo),
     obtener: (id) => api.get(`/seleccion/banco-talentos/${id}`).then(datos),
