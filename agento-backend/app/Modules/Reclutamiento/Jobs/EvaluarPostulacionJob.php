@@ -48,7 +48,8 @@ class EvaluarPostulacionJob implements ShouldQueue
             // declarado por el candidato y lo validado por RR. HH.
             try {
                 $cv = $postulacion->cv()->withoutGlobalScopes()->first();
-                if ($cv?->ruta) {
+                // Solo un archivo ya aprobado por el antivirus se entrega a un extractor externo.
+                if ($cv?->ruta && $cv->descargable()) {
                     $extractor->extraer(Storage::disk($cv->disco)->path($cv->ruta), $cv->mime);
                 }
                 $postulacion->update(['extraccion_estado' => 'completada']);

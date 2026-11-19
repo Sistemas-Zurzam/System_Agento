@@ -2,6 +2,7 @@
 
 namespace App\Modules\Reclutamiento\Infrastructure;
 
+use App\Modules\Reclutamiento\Jobs\EscanearDocumentoJob;
 use App\Modules\Reclutamiento\Models\DocumentoCandidato;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Storage;
@@ -23,7 +24,7 @@ class AlmacenDocumentosCandidato
         $disco = config('reclutamiento.cv.disco', 'local');
         $ruta = $archivo->storeAs("reclutamiento/{$empresaId}/candidatos/{$candidatoId}", Str::uuid().'.pdf', $disco);
 
-        return DocumentoCandidato::create([
+        return $this->registrar([
             'empresa_id' => $empresaId,
             'candidato_id' => $candidatoId,
             'tipo' => 'cv',
@@ -55,7 +56,7 @@ class AlmacenDocumentosCandidato
         $disco = config('reclutamiento.cv.disco', 'local');
         $ruta = $archivo->storeAs("reclutamiento/{$empresaId}/candidatos/{$candidatoId}", Str::uuid().'.'.$extensiones[$mimeReal], $disco);
 
-        return DocumentoCandidato::create([
+        return $this->registrar([
             'empresa_id' => $empresaId,
             'candidato_id' => $candidatoId,
             'tipo' => $tipo,
@@ -68,8 +69,27 @@ class AlmacenDocumentosCandidato
         ]);
     }
 
+    /**
+     * Guarda el registro (nace `pendiente_escaneo`: no se descarga hasta que el antivirus lo apruebe)
+     * y encola su escaneo cuando termine la transacción en curso.
+     *
+     * @param  array<string, mixed>  $datos
+     */
+    private function registrar(array $datos): DocumentoCandidato
+    {
+        $documento = DocumentoCandidato::create($datos);
+        EscanearDocumentoJob::dispatch($documento->empresa_id, $documento->id)->afterCommit();
+
+        return $documento;
+    }
+
     public function descargar(DocumentoCandidato $documento): StreamedResponse
     {
+        abort_unless($documento->descargable() || $documento->eliminado_at, 423, match ($documento->estado_escaneo) {
+            DocumentoCandidato::INFECTADO => 'El archivo fue bloqueado por el antivirus y no se puede descargar.',
+            default => 'El archivo está en revisión de seguridad. Inténtalo de nuevo en unos minutos.',
+        });
+
         abort_if($documento->eliminado_at || ! $documento->ruta || ! Storage::disk($documento->disco)->exists($documento->ruta), 404, 'El archivo no está disponible.');
 
         return Storage::disk($documento->disco)->response($documento->ruta, $documento->nombre_original, [

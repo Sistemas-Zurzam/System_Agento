@@ -3,10 +3,14 @@
 namespace App\Modules\Reclutamiento;
 
 use App\Modules\Reclutamiento\Console\CerrarIntentosVencidosCommand;
+use App\Modules\Reclutamiento\Console\EscanearDocumentosCommand;
 use App\Modules\Reclutamiento\Console\VencerCandidatosCommand;
+use App\Modules\Reclutamiento\Domain\Contracts\EscanerArchivos;
 use App\Modules\Reclutamiento\Domain\Contracts\ExtractorCv;
 use App\Modules\Reclutamiento\Domain\Contracts\IniciadorOnboarding;
 use App\Modules\Reclutamiento\Domain\Contracts\ProveedorCompatibilidad;
+use App\Modules\Reclutamiento\Infrastructure\Antivirus\EscanerClamAv;
+use App\Modules\Reclutamiento\Infrastructure\Antivirus\EscanerNulo;
 use App\Modules\Reclutamiento\Infrastructure\OnboardingPorTareaPendiente;
 use App\Modules\Reclutamiento\Infrastructure\SinProveedorAts;
 use Illuminate\Cache\RateLimiting\Limit;
@@ -23,12 +27,17 @@ class ReclutamientoServiceProvider extends ServiceProvider
         $this->app->bind(ExtractorCv::class, SinProveedorAts::class);
         $this->app->bind(ProveedorCompatibilidad::class, SinProveedorAts::class);
         $this->app->bind(IniciadorOnboarding::class, OnboardingPorTareaPendiente::class);
+
+        // Antivirus de archivos: ClamAV (producción) o escáner nulo (local/testing). Ver docs/runbooks/clamav.md.
+        $this->app->bind(EscanerArchivos::class, fn () => config('reclutamiento.antivirus.driver') === 'clamav'
+            ? new EscanerClamAv((string) config('reclutamiento.antivirus.clamav.direccion'), (int) config('reclutamiento.antivirus.clamav.timeout'))
+            : new EscanerNulo);
     }
 
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([VencerCandidatosCommand::class, CerrarIntentosVencidosCommand::class]);
+            $this->commands([VencerCandidatosCommand::class, CerrarIntentosVencidosCommand::class, EscanearDocumentosCommand::class]);
         }
 
         RateLimiter::for('seleccion-codigos', function (Request $request) {

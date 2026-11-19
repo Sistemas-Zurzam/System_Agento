@@ -22,6 +22,8 @@ class Tarea extends Model
 
     public const REINGRESO = 'reingreso';
 
+    public const ARCHIVO_INFECTADO = 'archivo_infectado';
+
     protected $table = 'seleccion_tareas';
 
     protected function casts(): array

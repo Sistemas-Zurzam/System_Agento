@@ -61,6 +61,20 @@ return [
         'excluir_contratados' => (bool) env('RECLUTAMIENTO_RETENCION_EXCLUIR_CONTRATADOS', true),
     ],
 
+    // Antivirus de CV y documentos de candidatos (ver docs/runbooks/clamav.md).
+    'antivirus' => [
+        // clamav | nulo. El nulo solo da por bueno lo que no es EICAR en local/testing; fuera de ahí NO sirve.
+        'driver' => env('ANTIVIRUS_DRIVER', env('APP_ENV') === 'production' ? 'clamav' : 'nulo'),
+        // Qué hacer si el antivirus no responde: rechazar (el archivo sigue bloqueado y se reintenta,
+        // falla CERRADO) | permitir (lo da por limpio y lo registra). Por defecto: rechazar en producción.
+        'si_no_disponible' => env('ANTIVIRUS_SI_NO_DISPONIBLE', env('APP_ENV') === 'production' ? 'rechazar' : 'permitir'),
+        'clamav' => [
+            // unix:///var/run/clamav/clamd.ctl | tcp://127.0.0.1:3310
+            'direccion' => env('CLAMAV_SOCKET', 'tcp://127.0.0.1:3310'),
+            'timeout' => (int) env('CLAMAV_TIMEOUT', 20),
+        ],
+    ],
+
     // URL pública del frontend usada en correos (portal /empleos).
     'url_portal' => env('RECLUTAMIENTO_URL_PORTAL', env('FRONTEND_URL', env('APP_URL', 'http://localhost'))),
 ];
