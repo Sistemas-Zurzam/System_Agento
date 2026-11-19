@@ -21,6 +21,13 @@ class AislamientoModelosTest extends TestCase
 
     protected bool $aislamientoEstricto = true;
 
+    protected function tearDown(): void
+    {
+        $this->restaurarClavesForaneas();
+
+        parent::tearDown();
+    }
+
     /**
      * @return array<string, array{class-string}>
      */

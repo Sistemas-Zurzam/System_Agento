@@ -103,6 +103,7 @@ class AislamientoRutasTest extends TestCase
 
     protected function tearDown(): void
     {
+        $this->restaurarClavesForaneas();
         $this->tearDownCreaEscenarioSeleccion();
         parent::tearDown();
     }

@@ -86,24 +86,35 @@ trait InsertaFilasDeEmpresa
             if ($columna['nullable'] || $columna['default'] !== null) {
                 continue;
             }
-            $fila[$nombre] = $checks[$nombre] ?? $this->valorPara((string) $columna['type_name']);
+            $fila[$nombre] = $checks[$nombre] ?? $this->valorPara($columna);
         }
 
         return (int) DB::table($tabla)->insertGetId($fila);
     }
 
-    private function valorPara(string $tipo): mixed
+    /**
+     * @param  array<string, mixed>  $columna  fila de Schema::getColumns()
+     */
+    private function valorPara(array $columna): mixed
     {
         $n = ++self::$contadorFilas;
-        $tipo = strtolower($tipo);
+        $tipo = strtolower((string) $columna['type_name']);
+        $completo = strtolower((string) ($columna['type'] ?? ''));
+        // Números pequeños y distintos entre las dos filas que se siembran: MySQL en modo estricto
+        // rechaza valores fuera de rango (tinyint, decimal(5,2)...).
+        $numero = ($n % 90) + 1;
 
         return match (true) {
-            str_contains($tipo, 'int'), $tipo === 'boolean' => $n,
-            in_array($tipo, ['decimal', 'float', 'double', 'numeric', 'real'], true) => $n,
+            str_contains($tipo, 'int'), $tipo === 'boolean' => $numero,
+            in_array($tipo, ['decimal', 'float', 'double', 'numeric', 'real'], true) => $numero,
             $tipo === 'date' => '2026-01-01',
             in_array($tipo, ['datetime', 'timestamp'], true) => '2026-01-01 00:00:00',
             $tipo === 'time' => '00:00:00',
             $tipo === 'json' => '{}',
+            // MySQL: enum('a','b') → primer valor permitido.
+            $tipo === 'enum' && preg_match("/^enum\\('((?:[^']|'')*)'/", $completo, $m) === 1 => str_replace("''", "'", $m[1]),
+            // char(3)/varchar(10): el texto no puede exceder la longitud declarada.
+            in_array($tipo, ['char', 'varchar'], true) && preg_match('/\\((\\d+)\\)/', $completo, $m) === 1 => substr('x'.$n, 0, max(1, (int) $m[1])),
             default => 'x'.$n,
         };
     }
@@ -115,6 +126,10 @@ trait InsertaFilasDeEmpresa
      */
     private function valoresPermitidos(string $tabla): array
     {
+        if (DB::getDriverName() !== 'sqlite') {
+            return [];
+        }
+
         $sql = (string) DB::table('sqlite_master')->where('name', $tabla)->value('sql');
         $permitidos = [];
         if (preg_match_all('/"(\w+)"\s+in\s*\(\s*\'([^\']*)\'/i', $sql, $coincidencias, PREG_SET_ORDER)) {
@@ -128,7 +143,21 @@ trait InsertaFilasDeEmpresa
 
     protected function diferirClavesForaneas(): void
     {
-        // Dentro de la transacción del test: las FK se comprueban al confirmar, y nunca se confirma.
-        DB::statement('PRAGMA defer_foreign_keys = ON');
+        if (DB::getDriverName() === 'sqlite') {
+            // Dentro de la transacción del test: las FK se comprueban al confirmar, y nunca se confirma.
+            DB::statement('PRAGMA defer_foreign_keys = ON');
+
+            return;
+        }
+
+        // MySQL: la variable es de sesión y NO se revierte con la transacción: restaurarClavesForaneas().
+        DB::statement('SET FOREIGN_KEY_CHECKS=0');
+    }
+
+    protected function restaurarClavesForaneas(): void
+    {
+        if (DB::getDriverName() !== 'sqlite') {
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
+        }
     }
 }

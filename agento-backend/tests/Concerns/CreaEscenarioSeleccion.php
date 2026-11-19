@@ -51,6 +51,12 @@ trait CreaEscenarioSeleccion
      */
     protected function tearDownCreaEscenarioSeleccion(): void
     {
+        // Solo SQLite en memoria: en MySQL no hay función que descartar y poner $migrated en false
+        // obligaría a ejecutar migrate:fresh (cientos de migraciones) después de CADA prueba.
+        if (DB::getDriverName() !== 'sqlite') {
+            return;
+        }
+
         RefreshDatabaseState::$inMemoryConnections = [];
         RefreshDatabaseState::$migrated = false;
     }

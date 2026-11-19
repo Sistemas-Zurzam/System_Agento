@@ -14,7 +14,7 @@ Fecha: 2026-11-19. Origen de los hallazgos: `docs/analisis-integracion-agento.md
 | 4a | Sin cabeceras de seguridad | **Parcial** | `fix/03-…` | Middleware en la API (nosniff, frame, referrer, permissions, HSTS solo en HTTPS). **El frontend estático lo sirve Apache: las mismas cabeceras deben ponerse allí** (fragmento en `docs/seguridad/cabeceras-y-cors.md`); no se tocó `apache.conf` |
 | 4b | CSP | **Parcial** | `fix/03-…` | En modo `report-only` con endpoint de reportes (sin tokens ni consultas en el log). Falta revisar violaciones una semana y pasarla a bloqueo |
 | 4c | JWT de 720 min | **Corregido** (TTL por defecto 60) | `fix/07-sesion-y-limpieza` — sin PR | Renovación preventiva en el frontend. **Si el `.env` del servidor define `JWT_TTL`, ese valor manda: hay que ponerlo en 60** |
-| 4d | JWT en `localStorage` | **Pendiente (decisión)** | `fix/07-…` | Solo se escribió el ADR (`docs/decisiones/ADR-sesion-tokens.md`). **No se implementó el cambio de almacenamiento: espera tu aprobación** |
+| 4d | JWT en `localStorage` | **Parcial (decidido: opción B ahora; opción A obligatoria antes del lanzamiento público)** | `fix/07-…` | ADR aceptado (`docs/decisiones/ADR-sesion-tokens.md`). Hoy: TTL 60 + renovación + CSP en `report-only`. El paso a bloqueo de la CSP tras 1 semana está en `docs/runbooks/despliegue.md` §5. La opción A (cookie `httpOnly`) tiene issue P0 en `docs/seguridad/issues-pendientes.md` |
 | 5a | `EmpresaScope` falla abierto | **Corregido** | `fix/04-aislamiento-multiempresa` — sin PR | Falla cerrado (excepción en local/testing; 0 filas en producción). Contexto de empresa en JWT, candidato, jobs y comandos; modo sistema con motivo registrado |
 | 5b | ~28 archivos con `withoutGlobalScope(s)` | **Corregido / auditado** | `fix/04-…` | 79 llamadas auditadas en `docs/seguridad/auditoria-scopes.md`; 2 búsquedas sin empresa corregidas, 1 bypass eliminado; test de arquitectura impide nuevos |
 | 5c | Fugas entre empresas en endpoints | **Corregido (1 hallazgo real)** | `fix/04-…` | Hallazgo y corrección: `Horario` (`update`, `duplicar`, `estado`) permitía a un usuario de la empresa A tocar horarios de la B. Se corrigió y hay test que recorre las rutas |
@@ -43,10 +43,14 @@ Fecha: 2026-11-19. Origen de los hallazgos: `docs/analisis-integracion-agento.md
 
 Los números de cada rama parten de `main` por separado; la fila de integración es la que cuenta como estado final. En integración hubo que resolver conflictos de fusión (`.env.example`, `routes/api.php`, `routes/seleccion.php`, `config/logging.php`, `config/reclutamiento.php`, `RegistradorAuditoria`) y adaptar el job y el comando de antivirus para no saltarse el scope (la regla de arquitectura del bloque 4 lo detectó). Ese ajuste solo existe en `integracion/hardening`.
 
+## CI sobre MySQL (añadido)
+
+`ci.yml` ahora tiene un segundo trabajo, `laravel-tests-mysql`: servicio MySQL de Actions (versión por la variable `MYSQL_VERSION`, por defecto `8.0`, **a confirmar contra producción**), migraciones up, down/up de las que añade el PR y la suite completa. Los helpers de test se adaptaron a MySQL por revisión de código (`InsertaFilasDeEmpresa`: enum, longitud de `char`, FK diferidas; `CreaEscenarioSeleccion`: ya no fuerza un `migrate:fresh` tras cada test fuera de SQLite). **Ese trabajo todavía no se ha ejecutado**: no hay MySQL local ni acceso a GitHub desde la sesión, así que no se sabe si la suite pasa sobre MySQL. Lo que falle por diferencias con SQLite se corrige al ver el primer resultado.
+
 Pruebas que **no** se pudieron hacer:
 - Los workflows de GitHub Actions (no se ejecutaron) ni el despliegue real.
 - `mysqldump` contra una base MySQL real y ClamAV real (se probó el protocolo de `clamd` con un servidor simulado y el flujo con EICAR mediante el escáner nulo).
-- Migraciones en MySQL: los tests corren en SQLite (se escribieron idempotentes y con nombres de índice cortos por la experiencia previa, pero no se ejecutaron en MySQL).
+- Migraciones y suite en MySQL: se agregó el trabajo de CI, pero no se ha ejecutado (ver arriba).
 - El frontend no tiene tests automatizados: la renovación de sesión se verificó con un script de Node sobre la lógica pura (9 casos) y con lint y build; no con un navegador.
 - ESLint reporta un error en `src/hooks/useCurrentUser.js` (`set-state-in-effect`) que **ya existía** y no se tocó.
 

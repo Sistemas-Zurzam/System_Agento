@@ -1,6 +1,6 @@
 # ADR: almacenamiento y ciclo de vida de los tokens de sesión del panel
 
-- **Estado:** PROPUESTO. Recomendación al final; **no se implementa el cambio de almacenamiento sin aprobación**.
+- **Estado:** ACEPTADO (2026-11-19). **Opción B ahora** (TTL corto + renovación + CSP; ya implementada). **La opción A (refresh token en cookie `httpOnly`) es un requisito OBLIGATORIO antes del lanzamiento público de Agento** (issue de seguimiento).
 - **Fecha:** 2026-11-19
 - **Contexto:** hallazgo "JWT de 720 min en `localStorage`" (`docs/analisis-integracion-agento.md`, §8.1).
 
@@ -57,9 +57,13 @@ Efecto sobre el riesgo: un token robado deja de servir como mucho a los 60 min y
 2. **Después de abrir el portal a postulantes externos:** implementar **A**. Es la única opción que elimina el robo de tokens por XSS, y el despliegue bajo un mismo dominio la hace viable. Conviene planificarla antes de que el volumen de superficie pública crezca, y después de tener la CSP en bloqueo (defensa en profundidad).
 3. Descartar C.
 
-**Decisión pendiente (a confirmar por quien aprueba):** ¿se aprueba la opción A para implementarla en un PR aparte? Hasta entonces no se toca el almacenamiento del token.
+## 6. Decisión
 
-## 6. Notas de operación
+- **Se aplica la opción B ahora.** TTL de 60 min con renovación preventiva (hecho) y CSP que **se mantiene en `report-only`**. El paso a bloqueo se hace **después de 1 semana sin violaciones relevantes** siguiendo `docs/runbooks/despliegue.md` §5 (criterio de "relevantes" incluido).
+- **La opción A queda como requisito obligatorio antes del lanzamiento público** de Agento: no se abre el portal a postulantes externos masivamente con el token de personal en `localStorage` sin haberla implementado. Issue de seguimiento: "Sesión del panel: refresh token en cookie httpOnly (ADR-sesion-tokens, opción A)" (ver `docs/seguridad/issues-pendientes.md`).
+- Hasta que se implemente A **no se toca el almacenamiento del token**.
+
+## 7. Notas de operación
 - El `.env` del servidor puede definir `JWT_TTL` y anular el nuevo valor por defecto: **verifica que no siga en 720** (`grep JWT_TTL .env`) y fija `JWT_TTL=60`.
 - Las sesiones abiertas antes del cambio conservan su token de 12 h hasta que venza; las nuevas ya salen con 60 min.
 - Si algún día el frontend se sirve desde otro dominio, revisar `docs/seguridad/cabeceras-y-cors.md` (CORS) antes de tocar cookies.
