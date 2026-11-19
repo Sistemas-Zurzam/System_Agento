@@ -2,6 +2,7 @@
 
 namespace App\Modules\Reclutamiento\Jobs;
 
+use App\Modules\Configuracion\Support\EmpresaContext;
 use App\Modules\Reclutamiento\Application\EscaneoDocumentos;
 use App\Modules\Reclutamiento\Models\DocumentoCandidato;
 use Illuminate\Bus\Queueable;
@@ -52,9 +53,9 @@ class EscanearDocumentoJob implements ShouldQueue
 
     private function documento(): ?DocumentoCandidato
     {
-        return DocumentoCandidato::withoutGlobalScopes()
+        return EmpresaContext::como($this->empresaId, fn () => DocumentoCandidato::query()
             ->where('empresa_id', $this->empresaId)
             ->whereKey($this->documentoId)
-            ->first();
+            ->first());
     }
 }

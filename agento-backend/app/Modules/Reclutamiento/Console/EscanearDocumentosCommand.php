@@ -2,6 +2,8 @@
 
 namespace App\Modules\Reclutamiento\Console;
 
+use App\Modules\Configuracion\Models\Empresa;
+use App\Modules\Configuracion\Support\EmpresaContext;
 use App\Modules\Reclutamiento\Jobs\EscanearDocumentoJob;
 use App\Modules\Reclutamiento\Models\DocumentoCandidato;
 use Illuminate\Console\Command;
@@ -25,18 +27,31 @@ class EscanearDocumentosCommand extends Command
             $estados[] = DocumentoCandidato::LEGADO;
         }
 
-        // Recorre todas las empresas a propósito (tarea programada); cada job lleva su empresa.
-        $documentos = DocumentoCandidato::withoutGlobalScopes()
-            ->whereIn('estado_escaneo', $estados)
-            ->whereNull('eliminado_at')->whereNotNull('ruta')
-            ->orderBy('id')->limit(max(1, (int) $this->option('limite')))
-            ->get(['id', 'empresa_id']);
+        // Recorrido explícito por empresa (tarea programada): cada una con su propio contexto, y cada job
+        // lleva su empresa. El límite es global.
+        $restantes = max(1, (int) $this->option('limite'));
+        $encolados = 0;
 
-        foreach ($documentos as $documento) {
-            EscanearDocumentoJob::dispatch($documento->empresa_id, $documento->id);
+        foreach (Empresa::query()->orderBy('id')->pluck('id') as $empresaId) {
+            if ($restantes <= 0) {
+                break;
+            }
+
+            $ids = EmpresaContext::como($empresaId, fn () => DocumentoCandidato::query()
+                ->whereIn('estado_escaneo', $estados)
+                ->whereNull('eliminado_at')->whereNotNull('ruta')
+                ->orderBy('id')->limit($restantes)
+                ->pluck('id'));
+
+            foreach ($ids as $documentoId) {
+                EscanearDocumentoJob::dispatch($empresaId, $documentoId);
+            }
+
+            $encolados += $ids->count();
+            $restantes -= $ids->count();
         }
 
-        $this->info("Documentos encolados para escaneo: {$documentos->count()}");
+        $this->info("Documentos encolados para escaneo: {$encolados}");
 
         return self::SUCCESS;
     }
