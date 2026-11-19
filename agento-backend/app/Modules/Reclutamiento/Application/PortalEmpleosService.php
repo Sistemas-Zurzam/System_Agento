@@ -2,6 +2,7 @@
 
 namespace App\Modules\Reclutamiento\Application;
 
+use App\Modules\Configuracion\Support\EmpresaContext;
 use App\Modules\Reclutamiento\Domain\FlujoPostulacion;
 use App\Modules\Reclutamiento\Infrastructure\AlmacenDocumentosCandidato;
 use App\Modules\Reclutamiento\Infrastructure\CorreoReclutamiento;
@@ -114,6 +115,9 @@ class PortalEmpleosService
 
         $archivosGuardados = [];
 
+        // La empresa de la postulación sale del proceso (resuelto por el servidor), nunca del request.
+        $previoContexto = EmpresaContext::entrarEmpresa((int) $proceso->empresa_id);
+
         try {
             $postulacion = DB::transaction(function () use ($proceso, $invitacion, $acceso, $datos, $cv, $ip, $perfil, $complementarios, &$archivosGuardados) {
                 $candidato = Candidato::firstOrNew(['empresa_id' => $proceso->empresa_id, 'email' => $acceso->email]);
@@ -179,6 +183,8 @@ class PortalEmpleosService
         } catch (\Throwable $e) {
             $this->limpiarArchivos($archivosGuardados);
             throw $e;
+        } finally {
+            EmpresaContext::restaurar($previoContexto);
         }
 
         // Extracción/ATS en cola con el contexto de empresa resuelto por el

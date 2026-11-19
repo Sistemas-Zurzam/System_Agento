@@ -274,7 +274,8 @@ class AplicacionPruebaService
                 });
             });
 
-        PruebaAsignacion::withoutGlobalScopes()
+        // Se ejecuta dentro del contexto de una empresa (ver CerrarIntentosVencidosCommand).
+        PruebaAsignacion::query()
             ->where('estado', PruebaAsignacion::PENDIENTE)
             ->where('disponible_hasta', '<', now())
             ->update(['estado' => PruebaAsignacion::VENCIDA]);

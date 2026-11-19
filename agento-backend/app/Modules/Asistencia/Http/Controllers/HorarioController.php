@@ -46,8 +46,18 @@ class HorarioController extends Controller
         return new HorarioResource($horario);
     }
 
+    /**
+     * Horario no tiene EmpresaScope: el horario debe ser de la empresa activa del usuario
+     * (la misma que lista index). Responde 404 como si no existiera.
+     */
+    private function exigirDeLaEmpresaActiva(Request $request, Horario $horario): void
+    {
+        abort_unless((int) $horario->empresa_id === (int) $request->user('api')->empresa_id, 404, 'El registro solicitado no existe.');
+    }
+
     public function update(UpdateHorarioRequest $request, Horario $horario): HorarioResource
     {
+        $this->exigirDeLaEmpresaActiva($request, $horario);
         $horario = $this->horarios->actualizar($horario, $request->validated());
 
         return new HorarioResource($horario);
@@ -55,14 +65,16 @@ class HorarioController extends Controller
 
     public function duplicar(Request $request, Horario $horario): HorarioResource
     {
+        $this->exigirDeLaEmpresaActiva($request, $horario);
         $empresaActiva = $request->user('api')->empresa;
         $copia = $this->horarios->duplicar($empresaActiva, $horario);
 
         return new HorarioResource($copia);
     }
 
-    public function cambiarEstado(Horario $horario): HorarioResource
+    public function cambiarEstado(Request $request, Horario $horario): HorarioResource
     {
+        $this->exigirDeLaEmpresaActiva($request, $horario);
         $horario = $this->horarios->cambiarEstado($horario);
 
         return new HorarioResource($horario);
