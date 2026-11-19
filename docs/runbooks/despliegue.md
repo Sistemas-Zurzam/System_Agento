@@ -42,6 +42,8 @@ GitHub → *Settings → Environments → New environment* `production` → **Re
 |---|---|---|
 | `SSH_HOST`, `SSH_USERNAME`, `SSH_PRIVATE_KEY`, `SSH_PORT` | secret | Acceso SSH del usuario de despliegue |
 | `MAINTENANCE_SECRET` | secret (opcional) | Ruta de bypass del modo mantenimiento (si falta, se genera uno aleatorio por despliegue) |
+| `STAGING_DEPLOY_ENABLED` | variable de **repositorio** | `true` para que el push a `dev` **despliegue**. Sin ella solo corren las pruebas |
+| `PRODUCTION_DEPLOY_ENABLED` | variable de **repositorio** | `true` para permitir despliegues de `main` (además de la aprobación manual). Sin ella solo corren las pruebas |
 | `HEALTHCHECK_URL` | variable | p. ej. `https://agento.com.pe/up`. **Obligatoria**: sin ella el smoke test falla |
 | `APP_DIR` | variable (opcional) | default `/var/www/Plataforma-Agento` |
 | `BACKUP_DIR` | variable (opcional) | default `/var/backups/agento` |

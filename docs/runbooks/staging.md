@@ -33,7 +33,7 @@ El frontend compila con `VITE_API_URL` (ver `agento-frontend/.env.example`).
 ## 4. GitHub
 1. *Settings → Environments → New environment* `staging` (sin revisores: es automático).
 2. Secretos del Environment `staging`: `SSH_HOST`, `SSH_USERNAME`, `SSH_PRIVATE_KEY`, `SSH_PORT`, y opcional `MAINTENANCE_SECRET`.
-3. Variables del Environment `staging`: `HEALTHCHECK_URL` (p. ej. `https://staging.<dominio>/up`, **obligatoria**), y opcionales `APP_DIR`, `BACKUP_DIR`, `BACKUP_RETENTION_DAYS`.
+3. Variable de **repositorio** (no del Environment: el `if` del job no lee las del Environment) **`STAGING_DEPLOY_ENABLED=true`** (interruptor: sin ella el push a `dev` no despliega; actívala solo cuando el servidor esté preparado), `HEALTHCHECK_URL` (p. ej. `https://staging.<dominio>/up`, **obligatoria**), y opcionales `APP_DIR`, `BACKUP_DIR`, `BACKUP_RETENTION_DAYS`.
 4. Usar una llave SSH **distinta** a la de producción.
 5. (Recomendado) proteger las ramas `main` y `dev`: PR obligatorio y check `laravel-tests` requerido.
 

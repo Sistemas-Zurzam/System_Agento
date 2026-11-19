@@ -23,6 +23,10 @@ jobs:
 
   deploy:
     needs: tests
+    # Interruptor de seguridad: sin la variable STAGING_DEPLOY_ENABLED=true el push a `dev` solo ejecuta las
+    # pruebas y NO despliega. Se activa cuando staging está preparado (docs/runbooks/staging.md), porque este
+    # trabajo hereda los secretos SSH del repositorio, que pueden apuntar a otro servidor.
+    if: ${{ vars.STAGING_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     environment: staging
     timeout-minutes: 30

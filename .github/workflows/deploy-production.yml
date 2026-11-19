@@ -27,6 +27,10 @@ jobs:
 
   deploy:
     needs: tests
+    # Interruptor de seguridad adicional a la aprobación manual: sin PRODUCTION_DEPLOY_ENABLED=true un push
+    # a `main` solo ejecuta las pruebas. Si el Environment "production" no tuviera revisores obligatorios,
+    # GitHub desplegaría sin pedir aprobación; esto evita ese caso hasta que se active a propósito.
+    if: ${{ vars.PRODUCTION_DEPLOY_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     environment: production
     timeout-minutes: 30

@@ -60,7 +60,8 @@ El CI ahora corre la suite completa **también sobre MySQL** (servicio de Action
 **GitHub**
 1. Crear los Environments `staging` y `production`; en `production`, **Required reviewers**.
 2. Mover ahí los secretos SSH y definir `HEALTHCHECK_URL` (obligatoria) y, opcionales, `APP_DIR`, `BACKUP_DIR`, `BACKUP_RETENTION_DAYS`, `MAINTENANCE_SECRET`.
-3. Definir la variable de repositorio **`MYSQL_VERSION`** con la versión de producción (`SELECT VERSION();`).
+3. Variables de despliegue (de repositorio): `STAGING_DEPLOY_ENABLED=true` cuando staging esté listo y `PRODUCTION_DEPLOY_ENABLED=true` solo cuando se quiera desplegar `main` (sin ellas, los pushes solo ejecutan las pruebas).
+3b. Definir la variable de repositorio **`MYSQL_VERSION`** con la versión de producción (`SELECT VERSION();`).
 4. Proteger `main` y `dev` (PR obligatorio y checks `laravel-tests` y `laravel-tests-mysql`).
 
 **Servidor de producción**
