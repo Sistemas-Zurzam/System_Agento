@@ -121,7 +121,7 @@ Route::middleware(['jwt', 'servicio:reclutamiento'])->prefix('seleccion')->group
     Route::delete('/banco-talentos/{candidato}/etiquetas/{etiqueta}', [BancoTalentosController::class, 'quitarEtiqueta'])->middleware($gestionarCandidatos);
 });
 
-Route::prefix('publico')->middleware('throttle:seleccion-publico')->group(function () {
+Route::prefix('publico')->middleware(['throttle:seleccion-publico', 'contexto.sistema:portal público de empleos (la empresa sale del proceso o token resuelto por el servidor, nunca del request)'])->group(function () {
     Route::get('/empleos', [EmpleosController::class, 'index'])->middleware('throttle:portal-listado');
     Route::get('/empleos/{codigo}', [EmpleosController::class, 'show'])->middleware('throttle:portal-detalle');
 
@@ -151,5 +151,5 @@ Route::prefix('publico')->middleware('throttle:seleccion-publico')->group(functi
 // una prueba con imágenes hace muchas solicitudes seguidas.
 Route::get('/publico/pruebas/imagenes/{imagen}', [PruebaController::class, 'imagen'])
     ->whereNumber('imagen')
-    ->middleware('signed:relative')
+    ->middleware(['signed:relative', 'contexto.sistema:imagen de prueba por URL firmada (la firma es el control de acceso)'])
     ->name('seleccion.pruebas.imagen');

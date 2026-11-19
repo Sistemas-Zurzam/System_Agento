@@ -67,6 +67,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Usos del modo sistema (sin filtro de empresa): motivo, contexto y ruta. Ver EmpresaContext.
+        'tenant' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/tenant.log'),
+            'level' => 'info',
+            'days' => 60,
+            'replace_placeholders' => true,
+        ],
+
         'single' => [
             'driver' => 'single',
             'path' => storage_path('logs/laravel.log'),

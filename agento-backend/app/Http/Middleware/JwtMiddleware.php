@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Modules\Configuracion\Support\EmpresaContext;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -38,6 +39,14 @@ class JwtMiddleware
             return response()->json(['message' => 'La sesión ya no es válida'], 401);
         }
 
-        return $next($request);
+        // Empresa del token: el aislamiento (EmpresaScope) filtra por este contexto. Se restaura al
+        // terminar para que nada quede "pegado" entre peticiones.
+        $previo = EmpresaContext::entrarEmpresa((int) $user->empresa_id);
+
+        try {
+            return $next($request);
+        } finally {
+            EmpresaContext::restaurar($previo);
+        }
     }
 }

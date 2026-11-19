@@ -3,6 +3,7 @@
 use App\Http\Middleware\CabecerasSeguridad;
 use App\Http\Middleware\JwtMiddleware;
 use App\Modules\Auditoria\Http\Middleware\RegistrarAuditoria;
+use App\Modules\Configuracion\Http\Middleware\ContextoSistema;
 use App\Modules\Configuracion\Http\Middleware\EnsureIsEmpresaAdmin;
 use App\Modules\Configuracion\Http\Middleware\EnsurePermission;
 use App\Modules\Configuracion\Http\Middleware\EnsureServicioContratado;
@@ -15,6 +16,7 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Http\Request;
+use Illuminate\Routing\Middleware\SubstituteBindings;
 use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 return Application::configure(basePath: dirname(__DIR__))
@@ -28,8 +30,13 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->append(CabecerasSeguridad::class);
         $middleware->api(append: [RegistrarAuditoria::class]);
 
+        // La autenticación JWT (que fija el contexto de empresa) debe correr ANTES de resolver los
+        // bindings de modelo: si no, {solicitud}, {proceso}... se buscarían sin empresa definida.
+        $middleware->prependToPriorityList(before: SubstituteBindings::class, prepend: JwtMiddleware::class);
+
         $middleware->alias([
             'jwt' => JwtMiddleware::class,
+            'contexto.sistema' => ContextoSistema::class,
             'empresa.admin' => EnsureIsEmpresaAdmin::class,
             'permiso' => EnsurePermission::class,
             'servicio' => EnsureServicioContratado::class,

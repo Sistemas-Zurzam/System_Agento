@@ -5,6 +5,7 @@ namespace Database\Seeders;
 use App\Models\User;
 use App\Modules\Configuracion\Models\Empresa;
 use App\Modules\Configuracion\Models\Role;
+use App\Modules\Configuracion\Support\EmpresaContext;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -16,6 +17,12 @@ class DatabaseSeeder extends Seeder
      * Seed the application's database.
      */
     public function run(): void
+    {
+        // Los seeders crean datos de varias empresas: modo sistema declarado.
+        EmpresaContext::comoSistema(fn () => $this->sembrar(), motivo: 'seeders: crean datos de todas las empresas');
+    }
+
+    private function sembrar(): void
     {
         $this->call(RoleSeeder::class);
         $this->call(PermissionSeeder::class);
