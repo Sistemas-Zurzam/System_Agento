@@ -247,6 +247,24 @@ class AntivirusDocumentosTest extends TestCase
         $this->withHeaders($this->cabeceras($rrhh))->get("/api/seleccion/postulaciones/{$postulacion->id}/cv")->assertOk();
     }
 
+    // ---- Regla permanente: la migración no modifica registros existentes ----
+
+    public function test_la_columna_nace_con_default_legado_para_las_filas_existentes_y_el_modelo_inserta_pendiente(): void
+    {
+        $columna = collect(\Illuminate\Support\Facades\Schema::getColumns('seleccion_documentos'))->firstWhere('name', 'estado_escaneo');
+
+        // Las filas ya existentes reciben 'legado' del propio ALTER (sin UPDATE); las nuevas, 'pendiente_escaneo'.
+        $this->assertStringContainsString('legado', (string) $columna['default']);
+        $this->assertSame('pendiente_escaneo', (new DocumentoCandidato)->estado_escaneo);
+    }
+
+    public function test_la_migracion_de_escaneo_no_contiene_updates_ni_deletes_de_datos(): void
+    {
+        $codigo = (string) file_get_contents(database_path('migrations/2026_11_19_000002_agregar_escaneo_a_documentos_candidato.php'));
+
+        $this->assertDoesNotMatchRegularExpression('/->update\(|->delete\(|DB::(update|delete|statement)\(/', $codigo);
+    }
+
     // ---- Escáner nulo ----
 
     public function test_el_escaner_nulo_fuera_de_local_y_testing_no_da_nada_por_limpio(): void

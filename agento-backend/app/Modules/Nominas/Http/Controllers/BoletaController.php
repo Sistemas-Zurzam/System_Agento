@@ -337,8 +337,7 @@ class BoletaController extends Controller
             'tasa' => ['required', Rule::in(['25', '35', '100'])],
             'motivo' => ['required', 'string', 'min:5', 'max:1000'],
         ]);
-        // La empresa del ciclo ya está autorizada: el colaborador debe pertenecer a ella.
-        $colaborador = Colaborador::withoutGlobalScopes()->where('empresa_id', $empresa->id)->findOrFail($colaborador);
+        $colaborador = Colaborador::withoutGlobalScopes()->findOrFail($colaborador);
 
         $boleta = $this->boletas->registrarHorasExtraEnBoleta(
             $empresa,

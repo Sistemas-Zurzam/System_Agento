@@ -77,7 +77,7 @@ class AlmacenDocumentosCandidato
      */
     private function registrar(array $datos): DocumentoCandidato
     {
-        $documento = DocumentoCandidato::create($datos);
+        $documento = DocumentoCandidato::create($datos + ['estado_escaneo' => DocumentoCandidato::PENDIENTE_ESCANEO]);
         EscanearDocumentoJob::dispatch($documento->empresa_id, $documento->id)->afterCommit();
 
         return $documento;

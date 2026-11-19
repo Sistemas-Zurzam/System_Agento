@@ -107,6 +107,57 @@ class AislamientoJobsYComandosTest extends TestCase
         $this->assertSame(2, JobQueLeeContexto::$candidatosVistos);
     }
 
+    // ---- Jobs de Nóminas: conservan el comportamiento histórico (regla permanente) ----
+
+    private function jobFalso(string $clase, ?int $empresaEnPayload): \Illuminate\Contracts\Queue\Job
+    {
+        $job = \Mockery::mock(\Illuminate\Contracts\Queue\Job::class);
+        $job->shouldReceive('resolveName')->andReturn($clase);
+        $job->shouldReceive('payload')->andReturn($empresaEnPayload ? ['empresa_contexto' => $empresaEnPayload] : []);
+
+        return $job;
+    }
+
+    public function test_un_job_de_nominas_en_el_worker_corre_sin_filtro_y_no_hereda_la_empresa_del_payload(): void
+    {
+        $job = $this->jobFalso('App\\Modules\\Nominas\\Jobs\\CalcularPlanillaJob', 5);
+
+        event(new \Illuminate\Queue\Events\JobProcessing('database', $job));
+
+        // Igual que en main: en el worker, sin filtro de empresa (ni la del payload ni fallo cerrado).
+        $this->assertTrue(EmpresaContext::esSistema());
+        $this->assertNull(EmpresaContext::actual());
+
+        event(new \Illuminate\Queue\Events\JobProcessed('database', $job));
+        $this->assertFalse(EmpresaContext::esSistema(), 'Al terminar vuelve al estado anterior');
+    }
+
+    public function test_un_job_de_nominas_dentro_de_una_peticion_conserva_el_contexto_ambiente(): void
+    {
+        $job = $this->jobFalso('App\\Modules\\Nominas\\Jobs\\EnviarBoletaPorCorreoJob', 5);
+
+        EmpresaContext::como(7, function () use ($job) {
+            event(new \Illuminate\Queue\Events\JobProcessing('sync', $job));
+
+            $this->assertSame(7, EmpresaContext::actual(), 'Cola sync dentro de la petición: el contexto no cambia (como en main)');
+            $this->assertFalse(EmpresaContext::esSistema());
+
+            event(new \Illuminate\Queue\Events\JobProcessed('sync', $job));
+        });
+    }
+
+    public function test_un_job_que_no_es_de_nominas_si_hereda_la_empresa_del_payload(): void
+    {
+        $job = $this->jobFalso('App\\Modules\\Reclutamiento\\Jobs\\EvaluarPostulacionJob', 5);
+
+        event(new \Illuminate\Queue\Events\JobProcessing('database', $job));
+        $this->assertSame(5, EmpresaContext::actual());
+        $this->assertFalse(EmpresaContext::esSistema());
+
+        event(new \Illuminate\Queue\Events\JobProcessed('database', $job));
+        $this->assertNull(EmpresaContext::actual());
+    }
+
     // ---- Comandos ----
 
     public function test_cerrar_intentos_recorre_cada_empresa_con_su_propio_contexto(): void

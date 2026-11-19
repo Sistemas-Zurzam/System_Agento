@@ -38,6 +38,9 @@ class DocumentoCandidato extends Model
 
     protected $table = 'seleccion_documentos';
 
+    /** Los registros NUEVOS nacen pendientes de escaneo (el DEFAULT de la columna es 'legado', solo para los ya existentes). */
+    protected $attributes = ['estado_escaneo' => self::PENDIENTE_ESCANEO];
+
     public function descargable(): bool
     {
         return in_array($this->estado_escaneo, self::DESCARGABLES, true);

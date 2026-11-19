@@ -406,7 +406,7 @@ class CicloRemunerativoController extends Controller
     public function resolverIncidenciaPendienteCierre(TransicionarAsistenciaRequest $request, CicloRemunerativo $ciclo, int $incidencia): JsonResponse
     {
         $empresa = $this->empresaAutorizadaDelCiclo($request, $ciclo);
-        $incidenciaModelo = AsistenciaIncidencia::withoutGlobalScope(EmpresaScope::class)->where('empresa_id', $empresa->id)->findOrFail($incidencia);
+        $incidenciaModelo = AsistenciaIncidencia::withoutGlobalScope(EmpresaScope::class)->findOrFail($incidencia);
 
         $this->asistenciaDecisiones->resolverIncidencia($empresa, $incidenciaModelo, $request->validated(), $request->user('api'));
 

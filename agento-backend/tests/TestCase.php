@@ -12,10 +12,10 @@ abstract class TestCase extends BaseTestCase
      * comando en producción, y cualquier consulta sin empresa falla. Los tests de
      * aislamiento (tests/Feature/Seguridad/Aislamiento*) lo activan.
      *
-     * Por defecto los tests parten en modo sistema declarado: muchos invocan servicios y
-     * modelos directamente para preparar o verificar datos de varias empresas, sin una
-     * petición HTTP. Las peticiones HTTP con JWT NO se ven afectadas: el middleware fija
-     * la empresa del token durante la petición, así que el aislamiento sí se ejercita.
+     * Por defecto los tests conservan el comportamiento que tenían antes del fallo cerrado: muchos
+     * invocan servicios y modelos directamente, sin petición HTTP ni usuario, para preparar o
+     * verificar datos de varias empresas. Con un usuario autenticado el scope SÍ filtra por su empresa
+     * (igual que antes), y las peticiones HTTP con JWT fijan la empresa del token.
      */
     protected bool $aislamientoEstricto = false;
 
@@ -25,7 +25,7 @@ abstract class TestCase extends BaseTestCase
 
         EmpresaContext::reiniciar();
         if (! $this->aislamientoEstricto) {
-            EmpresaContext::entrarSistema('tests: preparan y verifican datos de varias empresas sin petición HTTP', registrar: false);
+            EmpresaContext::permitirSinContextoEnPruebas();
         }
     }
 

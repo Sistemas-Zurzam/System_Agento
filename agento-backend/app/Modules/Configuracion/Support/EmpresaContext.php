@@ -29,6 +29,9 @@ final class EmpresaContext
 
     private static ?string $motivo = null;
 
+    /** Solo pruebas: sin contexto ni usuario no se filtra (como antes del fallo cerrado). Ver TestCase. */
+    private static bool $sinContextoPermitidoEnPruebas = false;
+
     public static function actual(): ?int
     {
         return self::$empresaId;
@@ -42,6 +45,21 @@ final class EmpresaContext
     public static function motivo(): ?string
     {
         return self::$motivo;
+    }
+
+    /**
+     * Compatibilidad de las pruebas heredadas: sin contexto ni usuario autenticado la consulta NO se filtra
+     * (el comportamiento que había antes del fallo cerrado). Solo se respeta con APP_ENV=testing; las pruebas de
+     * aislamiento no la activan y ejercitan el fallo cerrado.
+     */
+    public static function permitirSinContextoEnPruebas(bool $permitir = true): void
+    {
+        self::$sinContextoPermitidoEnPruebas = $permitir;
+    }
+
+    public static function sinContextoPermitidoEnPruebas(): bool
+    {
+        return self::$sinContextoPermitidoEnPruebas && app()->environment('testing');
     }
 
     /**
@@ -144,6 +162,7 @@ final class EmpresaContext
     /** Deja el contexto sin definir (inicio de cada test; fin de un proceso de larga vida). */
     public static function reiniciar(): void
     {
+        self::$sinContextoPermitidoEnPruebas = false;
         self::$empresaId = null;
         self::$sistema = false;
         self::$motivo = null;

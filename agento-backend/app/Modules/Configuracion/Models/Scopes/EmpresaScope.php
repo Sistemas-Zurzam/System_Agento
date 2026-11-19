@@ -34,6 +34,11 @@ class EmpresaScope implements Scope
             return;
         }
 
+        // Solo pruebas heredadas: comportamiento anterior (sin contexto ni usuario, sin filtro).
+        if (EmpresaContext::sinContextoPermitidoEnPruebas()) {
+            return;
+        }
+
         if (app()->environment(['local', 'testing'])) {
             throw EmpresaNoDefinidaException::para($model->getTable());
         }

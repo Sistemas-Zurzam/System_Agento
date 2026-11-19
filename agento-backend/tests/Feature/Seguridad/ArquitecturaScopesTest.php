@@ -56,6 +56,7 @@ class ArquitecturaScopesTest extends TestCase
         'Modules/Configuracion/Support/EmpresaContext.php',
         'Modules/Configuracion/Http/Middleware/ContextoSistema.php',
         'Modules/Reclutamiento/Http/Middleware/AutenticarCandidato.php',
+        'Providers/TenantServiceProvider.php',
     ];
 
     /**

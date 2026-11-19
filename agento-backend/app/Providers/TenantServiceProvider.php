@@ -34,6 +34,20 @@ class TenantServiceProvider extends ServiceProvider
         });
 
         Event::listen(JobProcessing::class, function (JobProcessing $evento) {
+            // Regla permanente: Nóminas no cambia. Sus jobs conservan el comportamiento histórico (en el worker
+            // corrían sin filtro de empresa): no heredan el contexto del payload y, si no hay contexto ni
+            // usuario (worker), entran en modo sistema declarado. Dentro de una petición (cola sync) se deja
+            // el contexto ambiente, igual que antes. Pendiente de decisión del responsable de Nóminas.
+            if (str_starts_with($evento->job->resolveName(), 'App\\Modules\\Nominas\\')) {
+                if (EmpresaContext::actual() === null && ! EmpresaContext::esSistema() && auth('api')->user() === null) {
+                    self::$previos[spl_object_id($evento->job)] = EmpresaContext::entrarSistema(
+                        'job de Nóminas: conserva el comportamiento histórico sin filtro de empresa (pendiente de decisión del responsable de Nóminas)'
+                    );
+                }
+
+                return;
+            }
+
             $empresaId = $evento->job->payload()['empresa_contexto'] ?? null;
             if ($empresaId) {
                 self::$previos[spl_object_id($evento->job)] = EmpresaContext::entrarEmpresa((int) $empresaId);
