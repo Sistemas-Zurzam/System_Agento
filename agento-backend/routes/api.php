@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReporteCspController;
 use App\Modules\Asistencia\Http\Controllers\AsistenciaController;
 use App\Modules\Auditoria\Http\Controllers\AuditoriaController;
 use App\Modules\Asistencia\Http\Controllers\ControlAccesoController;
@@ -50,6 +51,9 @@ use App\Modules\PortalCliente\Http\Controllers\PortalPersonalController;
 use App\Modules\PortalCliente\Http\Controllers\PortalPlanificacionController;
 use App\Modules\Reclutamiento\Http\Middleware\ExigirAlgunPermiso;
 use Illuminate\Support\Facades\Route;
+
+// Reportes de violación de CSP que envían los navegadores (público, siempre 204).
+Route::post('/seguridad/csp-report', ReporteCspController::class)->middleware('throttle:30,1');
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
