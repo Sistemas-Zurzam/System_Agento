@@ -51,13 +51,13 @@ use App\Modules\PortalCliente\Http\Controllers\PortalPlanificacionController;
 use App\Modules\Reclutamiento\Http\Middleware\ExigirAlgunPermiso;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/login', [AuthController::class, 'login']);
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 Route::middleware('jwt')->group(function () {
-    Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/me', [AuthController::class, 'me'])->middleware('throttle:auth-me');
     Route::put('/me', [ProfileController::class, 'update']);
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::post('/refresh', [AuthController::class, 'refresh'])->middleware('throttle:auth-refresh');
 
     // Auditoría: cualquier usuario autenticado puede reportar sus propios
     // clicks/navegación; la consulta de la bitácora requiere permiso.

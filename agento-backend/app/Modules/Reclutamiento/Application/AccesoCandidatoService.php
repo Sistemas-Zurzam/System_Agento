@@ -47,7 +47,7 @@ class AccesoCandidatoService
             ]);
         });
 
-        $this->correo->enviar(
+        $this->correo->encolar(
             $email,
             'Tu código de verificación',
             "Tu código para continuar en el portal de empleos es: {$codigo}\n\nVence en {$minutos} minutos. Si no lo solicitaste, ignora este mensaje.",

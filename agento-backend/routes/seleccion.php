@@ -122,8 +122,8 @@ Route::middleware(['jwt', 'servicio:reclutamiento'])->prefix('seleccion')->group
 });
 
 Route::prefix('publico')->middleware('throttle:seleccion-publico')->group(function () {
-    Route::get('/empleos', [EmpleosController::class, 'index']);
-    Route::get('/empleos/{codigo}', [EmpleosController::class, 'show']);
+    Route::get('/empleos', [EmpleosController::class, 'index'])->middleware('throttle:portal-listado');
+    Route::get('/empleos/{codigo}', [EmpleosController::class, 'show'])->middleware('throttle:portal-detalle');
 
     Route::post('/candidatos/codigo', [CandidatoController::class, 'solicitarCodigo'])->middleware('throttle:seleccion-codigos');
     Route::post('/candidatos/verificar', [CandidatoController::class, 'verificarCodigo'])->middleware('throttle:seleccion-verificacion');

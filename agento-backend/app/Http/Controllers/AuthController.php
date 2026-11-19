@@ -4,18 +4,31 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\LoginRequest;
 use App\Http\Resources\UserResource;
+use App\Modules\Auditoria\Application\RegistradorAuditoria;
+use App\Support\BloqueoLogin;
 use Illuminate\Http\JsonResponse;
 use Tymon\JWTAuth\Facades\JWTAuth;
 
 class AuthController extends Controller
 {
-    public function login(LoginRequest $request): JsonResponse
+    public function login(LoginRequest $request, BloqueoLogin $bloqueo, RegistradorAuditoria $auditoria): JsonResponse
     {
-        $credentials = $request->credentials();
+        $login = (string) $request->validated('login');
 
-        if (! $token = JWTAuth::attempt($credentials)) {
+        // Cuenta bloqueada: misma respuesta exista o no la cuenta.
+        if (($espera = $bloqueo->segundosRestantes($login)) > 0) {
+            return response()->json(['message' => 'Demasiados intentos. Espera un momento antes de volver a intentarlo.'], 429, ['Retry-After' => $espera]);
+        }
+
+        if (! $token = JWTAuth::attempt($request->credentials())) {
+            if ($bloqueo->registrarFallo($login)) {
+                $auditoria->cuentaBloqueada($request, $login);
+            }
+
             return response()->json(['message' => 'Credenciales inválidas'], 401);
         }
+
+        $bloqueo->limpiar($login);
 
         return $this->respondWithToken($token);
     }
