@@ -23,7 +23,7 @@ const SECCIONES = {
 };
 
 // Vistas de Selección: /seleccion, /seleccion/<vista> y /seleccion/procesos/:id.
-const VISTAS_SELECCION = ['solicitudes', 'procesos', 'candidatos', 'banco-talentos', 'evaluaciones'];
+const VISTAS_SELECCION = ['solicitudes', 'procesos', 'candidatos', 'banco-talentos', 'evaluaciones', 'arco'];
 
 const CONFIG_PATHS = {
   'mi-perfil': '/mi-perfil',

@@ -51,6 +51,7 @@ export const sesionCandidato = {
 export const portalEmpleosApi = {
   listar: (params) => cliente.get('/empleos', { params }).then((r) => r.data),
   obtener: (codigo, invitacion) => cliente.get(`/empleos/${codigo}`, { params: { invitacion } }).then(datos),
+  textoLegal: (tipo) => cliente.get(`/textos-legales/${tipo}`).then(datos),
   postular: (codigo, formulario) => cliente.post(`/empleos/${codigo}/postulaciones`, formulario).then(datos),
 
   solicitarCodigo: (email) => cliente.post('/candidatos/codigo', { email }).then((r) => r.data),
@@ -60,6 +61,15 @@ export const portalEmpleosApi = {
   misPostulaciones: () => cliente.get('/candidatos/postulaciones').then(datos),
   retirar: (id, motivo) => cliente.post(`/candidatos/postulaciones/${id}/retiro`, { motivo }).then(datos),
   accesoPrueba: (asignacionId) => cliente.post(`/candidatos/pruebas/${asignacionId}/acceso`).then(datos),
+
+  // Derechos ARCO y consentimiento del propio candidato.
+  arco: {
+    exportacion: () => cliente.get('/candidatos/arco/exportacion').then(datos),
+    solicitudes: () => cliente.get('/candidatos/arco/solicitudes').then(datos),
+    rectificacion: (cambios, motivo) => cliente.post('/candidatos/arco/rectificacion', { cambios, motivo }).then(datos),
+    cancelacion: (motivo) => cliente.post('/candidatos/arco/cancelacion', { motivo }).then(datos),
+    revocarConsentimiento: () => cliente.post('/candidatos/consentimiento/revocar').then((r) => r.data),
+  },
 
   evaluacion: (token) => cliente.get(`/evaluaciones/${token}`).then(datos),
   accesoEvaluacion: (token, registro) => cliente.post(`/evaluaciones/${token}/acceso`, registro).then(datos),

@@ -5,6 +5,7 @@ import {
 import { useEffect, useState } from 'react';
 import { TEXTO_CONSENTIMIENTO, mensajeDeError } from '../constants/seleccion';
 import { usePerfilCandidato } from '../hooks/usePortalEmpleos';
+import { portalEmpleosApi } from '../services/portalEmpleosApi';
 
 const MAX_MB = 5;
 
@@ -45,6 +46,12 @@ export default function PostulacionForm({ empleo, invitacion, onPostular, onTerm
   const [paso, setPaso] = useState(0);
   const [enviando, setEnviando] = useState(false);
   const [resultado, setResultado] = useState(null);
+  // Texto legal vigente según el backend (fuente de verdad). Mientras carga o si falla se usa el de respaldo.
+  const [textoLegal, setTextoLegal] = useState(null);
+
+  useEffect(() => {
+    portalEmpleosApi.textoLegal('consentimiento_postulacion').then(setTextoLegal).catch(() => setTextoLegal(null));
+  }, []);
   const perfil = usePerfilCandidato(true);
 
   useEffect(() => {
@@ -83,7 +90,11 @@ export default function PostulacionForm({ empleo, invitacion, onPostular, onTerm
     datos.append('cv', v.cv[0].originFileObj);
     ['dni', 'cul'].forEach((campo) => { if (v[campo]?.[0]?.originFileObj) datos.append(campo, v[campo][0].originFileObj); });
     datos.append('consentimiento', '1');
-    datos.append('consentimiento_texto', TEXTO_CONSENTIMIENTO);
+    datos.append('consentimiento_texto', textoLegal?.texto ?? TEXTO_CONSENTIMIENTO);
+    if (textoLegal) {
+      datos.append('consentimiento_version', textoLegal.version);
+      datos.append('consentimiento_hash', textoLegal.hash);
+    }
     if (invitacion) datos.append('invitacion', invitacion);
 
     setEnviando(true);
@@ -230,7 +241,7 @@ export default function PostulacionForm({ empleo, invitacion, onPostular, onTerm
             valuePropName="checked"
             rules={[{ validator: (_, v) => (v ? Promise.resolve() : Promise.reject(new Error('Debes aceptar para postular.'))) }]}
           >
-            <Checkbox>{TEXTO_CONSENTIMIENTO}</Checkbox>
+            <Checkbox>{textoLegal?.texto ?? TEXTO_CONSENTIMIENTO}</Checkbox>
           </Form.Item>
         </div>
       </Form>

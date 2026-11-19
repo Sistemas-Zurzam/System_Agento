@@ -1,5 +1,6 @@
 <?php
 
+use App\Modules\Reclutamiento\Http\Controllers\ArcoController;
 use App\Modules\Reclutamiento\Http\Controllers\BancoTalentosController;
 use App\Modules\Reclutamiento\Http\Controllers\ContratacionController;
 use App\Modules\Reclutamiento\Http\Controllers\DashboardController;
@@ -7,6 +8,7 @@ use App\Modules\Reclutamiento\Http\Controllers\EntrevistaController;
 use App\Modules\Reclutamiento\Http\Controllers\PostulacionController;
 use App\Modules\Reclutamiento\Http\Controllers\ProcesoController;
 use App\Modules\Reclutamiento\Http\Controllers\PruebaController;
+use App\Modules\Reclutamiento\Http\Controllers\Publico\ArcoCandidatoController;
 use App\Modules\Reclutamiento\Http\Controllers\Publico\CandidatoController;
 use App\Modules\Reclutamiento\Http\Controllers\Publico\EmpleosController;
 use App\Modules\Reclutamiento\Http\Controllers\Publico\EnlacePruebaPublicoController;
@@ -14,6 +16,7 @@ use App\Modules\Reclutamiento\Http\Controllers\Publico\PruebaPublicaController;
 use App\Modules\Reclutamiento\Http\Controllers\SolicitudController;
 use App\Modules\Reclutamiento\Http\Middleware\AutenticarCandidato;
 use App\Modules\Reclutamiento\Http\Middleware\ExigirAlgunPermiso;
+use App\Modules\Reclutamiento\Models\TextoLegal;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -119,6 +122,10 @@ Route::middleware(['jwt', 'servicio:reclutamiento'])->prefix('seleccion')->group
     Route::get('/banco-talentos/{candidato}/documentos/{documento}', [BancoTalentosController::class, 'documento'])->whereNumber(['candidato', 'documento'])->middleware('permiso:seleccion.documentos.ver');
     Route::post('/banco-talentos/{candidato}/etiquetas', [BancoTalentosController::class, 'etiquetar'])->middleware($gestionarCandidatos);
     Route::delete('/banco-talentos/{candidato}/etiquetas/{etiqueta}', [BancoTalentosController::class, 'quitarEtiqueta'])->middleware($gestionarCandidatos);
+
+    // Derechos ARCO de los candidatos (Ley 29733): bandeja de solicitudes.
+    Route::get('/arco', [ArcoController::class, 'index'])->middleware($gestionarCandidatos);
+    Route::post('/arco/{solicitud}/atender', [ArcoController::class, 'atender'])->whereNumber('solicitud')->middleware($gestionarCandidatos);
 });
 
 Route::prefix('publico')->middleware(['throttle:seleccion-publico', 'contexto.sistema:portal público de empleos (la empresa sale del proceso o token resuelto por el servidor, nunca del request)'])->group(function () {
@@ -128,7 +135,18 @@ Route::prefix('publico')->middleware(['throttle:seleccion-publico', 'contexto.si
     Route::post('/candidatos/codigo', [CandidatoController::class, 'solicitarCodigo'])->middleware('throttle:seleccion-codigos');
     Route::post('/candidatos/verificar', [CandidatoController::class, 'verificarCodigo'])->middleware('throttle:seleccion-verificacion');
 
+    // Texto legal vigente (el backend es la fuente de verdad de lo que el candidato acepta).
+    Route::get('/textos-legales/{tipo}', [ArcoCandidatoController::class, 'textoLegal'])->whereIn('tipo', TextoLegal::TIPOS);
+
     Route::middleware(AutenticarCandidato::class)->group(function () {
+        // ARCO y consentimiento del propio candidato.
+        Route::get('/candidatos/arco/exportacion', [ArcoCandidatoController::class, 'exportacion']);
+        Route::get('/candidatos/arco/documentos/{documento}', [ArcoCandidatoController::class, 'documento'])->whereNumber('documento');
+        Route::get('/candidatos/arco/solicitudes', [ArcoCandidatoController::class, 'solicitudes']);
+        Route::post('/candidatos/arco/rectificacion', [ArcoCandidatoController::class, 'rectificacion']);
+        Route::post('/candidatos/arco/cancelacion', [ArcoCandidatoController::class, 'cancelacion']);
+        Route::post('/candidatos/consentimiento/revocar', [ArcoCandidatoController::class, 'revocarConsentimiento']);
+
         Route::post('/empleos/{codigo}/postulaciones', [EmpleosController::class, 'postular']);
         Route::get('/candidatos/perfil', [CandidatoController::class, 'perfil']);
         Route::get('/candidatos/postulaciones', [CandidatoController::class, 'misPostulaciones']);
