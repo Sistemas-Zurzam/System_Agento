@@ -28,7 +28,7 @@ Siete bloques que corrigen los hallazgos de `docs/analisis-integracion-agento.md
 ## Bloque 4 · Aislamiento multiempresa
 
 - **Problema.** `EmpresaScope` fallaba abierto (sin usuario no filtraba); 79 `withoutGlobalScope` sin auditar.
-- **Solución.** `EmpresaContext` (empresa / modo sistema con motivo registrado / sin definir) y scope que **falla cerrado**. Contexto en JWT (que ahora corre antes de resolver los bindings), candidato, rutas públicas, jobs (viaja en el payload) y comandos (por empresa). Auditoría de los 79 usos con 2 correcciones y 1 bypass eliminado; test de arquitectura que impide nuevos.
+- **Solución.** `EmpresaContext` (empresa / modo sistema con motivo registrado / sin definir) y scope que **falla cerrado**. Contexto en JWT, candidato, rutas públicas, jobs (viaja en el payload; los de Nóminas conservan el comportamiento de `main`) y comandos (por empresa). Auditoría de los 79 usos con 1 bypass eliminado (Reclutamiento); 2 riesgos en Nóminas **documentados sin corregir** (regla permanente); test de arquitectura que impide nuevos.
 - **Hallazgo real corregido.** `Horario` (`update`, `duplicar`, `estado`) permitía a un usuario de la empresa A tocar horarios de la B.
 - **Pruebas.** Por modelo (30), recorrido de rutas con un usuario de otra empresa, jobs, comandos y arquitectura.
 
@@ -54,6 +54,25 @@ Siete bloques que corrigen los hallazgos de `docs/analisis-integracion-agento.md
 ## CI sobre MySQL
 
 El CI ahora corre la suite completa **también sobre MySQL** (servicio de Actions; versión por la variable `MYSQL_VERSION`, por defecto `8.0`) y prueba las migraciones: up, down de las que añade el PR y up otra vez. Los tests auxiliares se adaptaron a MySQL (enum, longitud de `char`, claves foráneas diferidas, y se evitó el `migrate:fresh` tras cada test). El despliegue exige ambos trabajos en verde.
+
+## Impacto en Nóminas: ninguno
+
+**Regla permanente:** no se modifica nada de Nóminas ni datos existentes. Evidencia (detalle en `docs/seguridad/estado-hardening.md`):
+
+- `git diff main...integracion/hardening --stat -- app/Modules/Nominas tests/Feature/Modules/Nominas` → **vacío** (tampoco hay archivos de Nóminas ni líneas de Nóminas en `routes/api.php` entre los cambios).
+- **Tests de Nóminas** (52 archivos) en `main` y en la rama: **320 de 320 en ambos, 1258 aserciones en ambos, 0 diferencias** caso por caso (registro JUnit).
+- Donde un cambio transversal habría alterado a Nóminas, se conserva el comportamiento de `main` sin editar sus archivos: sus 3 jobs siguen corriendo sin filtro de empresa en el worker, y la prioridad del middleware `jwt` se dejó como en `main`.
+- Efectos globales que alcanzan a sus respuestas sin cambiar datos, rutas ni contratos: cabeceras de seguridad HTTP, CORS por orígenes, sesión de 60 min con renovación y limitadores de login/refresh/me.
+- **Riesgos detectados en Nóminas, sin corregir y pendientes de decisión del responsable de Nóminas:** N1 a N5 (dos búsquedas por id sin filtro de empresa, 20 modelos sin scope, 32 rutas que validan antes de autorizar).
+
+## Migraciones y seeders (no modifican registros existentes)
+
+| Migración | Tipo | `down()` |
+|---|---|---|
+| `2026_11_19_000001_crear_textos_legales_y_solicitudes_arco` | tablas nuevas `seleccion_textos_legales` y `seleccion_solicitudes_arco`; columna nueva `seleccion_consentimientos.texto_legal_id`; siembra de 1 fila solo en la tabla nueva | sí |
+| `2026_11_19_000002_agregar_escaneo_a_documentos_candidato` | 3 columnas nuevas e índice nuevo en `seleccion_documentos`; **sin UPDATE** (las filas existentes toman el `DEFAULT 'legado'`) | sí |
+
+`DatabaseSeeder` solo envuelve sus llamadas existentes en modo sistema declarado (no se ejecuta en producción).
 
 ## Pasos manuales antes de desplegar
 

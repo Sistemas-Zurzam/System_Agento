@@ -30,36 +30,43 @@ Prioridades: **P0** = bloquea el lanzamiento público; **P1** = alta, siguiente 
 
 ---
 
-## 2. [P1] `EmpresaScope` en los 35 modelos con `empresa_id` (empezando por Nóminas y Personas)
+## 2. [P1] `EmpresaScope` en los modelos con `empresa_id` que no lo tienen (fuera de Nóminas)
 
-**Contexto.** 35 modelos tienen `empresa_id` pero no `EmpresaScope`: su aislamiento depende de comprobaciones en cada controlador o servicio (`tieneAccesoA`, `autorizarAccion`, `empresaAutorizadaDelCiclo`…). Hoy `AislamientoRutasTest` los cubre, pero no hay defensa en profundidad: una ruta nueva olvidada filtraría datos. Detalle en `docs/seguridad/auditoria-scopes.md` §6.
+**Alcance:** **fuera de Nóminas.** Los 20 modelos de Nóminas con `empresa_id` sin scope **solo se documentan** (`docs/seguridad/estado-hardening.md`, N3) y quedan a decisión del responsable de Nóminas; este issue no los toca.
 
-**Modelos** (orden sugerido: Nóminas y Personas primero):
-- Nóminas: `Boleta`, `BoletaEnvio`, `CicloRemunerativo`, `PlanillaComplementaria`, `LiquidacionCese`, `QuintaAjusteCese`, `BonoAsistenciaLote`, `BeneficioSocialEnvio`, `BeneficioSocialHistorico`, `SaldoLaboralPendiente`, `SaldoVacacionalHistorico`, `NominaImportacionHistorica`, `NominaImportacionHistoricaDetalle`, `PropuestaConcepto`, `ConsumoComidaAplicacion`, `ConsumoComidaDetalle`, `ConsumoComidaEvento`, `ConsumoComidaImportacion`.
-- Personas: `Colaborador`, `ColaboradorConceptoPeriodo`, `ColaboradorPeriodoPrueba`, `VacacionMovimiento`.
-- Configuración / Asistencia: `Sede`, `Horario`, `EmpresaCuentaBancaria`, `EmpresaUsuario`, `User`.
-- Selección: `Consentimiento`, `EntrevistaEvaluacion`, `EvaluacionAts`, `PostulacionMovimiento`, `PuntajeFinal`, `PruebaIntento`, `PruebaImagen`, `Prueba` (esta tiene `empresa_id` nulo para el banco compartido de Agento: usa su propio scope de visibilidad, valorar caso aparte).
+**Contexto.** Hay modelos con `empresa_id` sin `EmpresaScope`: su aislamiento depende de comprobaciones en cada controlador o servicio (`tieneAccesoA`, `autorizarAccion`…). Hoy `AislamientoRutasTest` los cubre, pero no hay defensa en profundidad: una ruta nueva olvidada filtraría datos. Detalle en `docs/seguridad/auditoria-scopes.md` §6.
 
-**Dificultad conocida.** Un `administrador` es global por diseño (`User::esAdministradorGlobal`) y varios servicios de Nóminas operan sobre una empresa distinta de la activa del usuario; por eso hoy usan `withoutGlobalScope`. Cada modelo nuevo con scope obliga a revisar esos usos y pasarlos a `EmpresaContext::como($empresaId, …)`.
+**Modelos (15):**
+- Configuración: `Sede`, `EmpresaCuentaBancaria`, `EmpresaUsuario`, `User`.
+- Personas: `Colaborador`, `ColaboradorPeriodoPrueba`.
+- Asistencia: `Horario`.
+- Selección: `Consentimiento`, `EntrevistaEvaluacion`, `EvaluacionAts`, `PostulacionMovimiento`, `PuntajeFinal`, `PruebaIntento`, `PruebaImagen`, `Prueba` (tiene `empresa_id` nulo para el banco compartido de Agento y su propio scope de visibilidad: valorar caso aparte).
+
+**Dificultad conocida.** Un `administrador` es global por diseño (`User::esAdministradorGlobal`) y hay servicios que operan sobre una empresa distinta de la activa del usuario; cada modelo con scope obliga a revisar esos usos y pasarlos a `EmpresaContext::como($empresaId, …)`. **`Colaborador` es consultado por Nóminas** (que no se puede modificar): antes de ponerle scope hay que demostrar, con los tests de Nóminas y con el responsable de Nóminas, que no cambia su comportamiento.
 
 **Criterios de aceptación.**
 - [ ] Cada modelo de la lista lleva `#[ScopedBy([EmpresaScope::class])]` (o queda documentado por qué no).
 - [ ] `AislamientoModelosTest` los incluye automáticamente y pasa.
-- [ ] Los `withoutGlobalScope(s)` de Nóminas/Personas auditados se reemplazan por `EmpresaContext::como` o se justifican; `ArquitecturaScopesTest` no necesita ampliar su lista.
-- [ ] Se quita el respaldo por usuario autenticado del `EmpresaScope` (paso 3 de su decisión) cuando todas las rutas estén bajo el contexto.
-- [ ] La suite completa pasa en SQLite y MySQL. Se entrega por PRs pequeños (uno por módulo).
+- [ ] **No se modifica ningún archivo de Nóminas** (`git diff main...<rama> --stat -- app/Modules/Nominas` vacío) y los tests de Nóminas dan el mismo resultado que en `main`.
+- [ ] Los `withoutGlobalScope(s)` fuera de Nóminas auditados se reemplazan por `EmpresaContext::como` o se justifican; `ArquitecturaScopesTest` no necesita ampliar su lista.
+- [ ] Se quita el respaldo por usuario autenticado del `EmpresaScope` (paso 3 de su decisión) solo cuando todas las rutas fuera de Nóminas estén bajo el contexto y Nóminas siga idéntico.
+- [ ] Sin migraciones de datos: solo cambios de código. La suite completa pasa en SQLite y MySQL. Se entrega por PRs pequeños.
 
 ---
 
-## 3. [P1] Rutas que validan antes de autorizar: invertir el orden y probarlas con cuerpos válidos
+## 3. [P1] Rutas que validan antes de autorizar (fuera de Nóminas): invertir el orden y probarlas con cuerpos válidos
 
-**Contexto.** 46 rutas responden 422 ante un cuerpo vacío porque el `FormRequest` o `$request->validate()` corre **antes** de comprobar que el recurso pertenece a la empresa del usuario. No filtran datos, pero (a) revelan la existencia de recursos ajenos (422 en vez de 404/403) y (b) la prueba dinámica de aislamiento no es concluyente para ellas. Su autorización se revisó solo leyendo código. Lista en `AislamientoRutasTest::VALIDAN_ANTES_DE_AUTORIZAR` (familias: `empresas/{empresa}/*`, `usuarios/{usuario}/*`, `horarios/{horario}`, `ciclos-remunerativos/{ciclo}/*`, `planillas-complementarias/*`, `nominas/importaciones-historicas/*`).
+**Alcance:** **fuera de Nóminas.** Las 32 rutas de Nóminas (`ciclos-remunerativos/*`, `planillas-complementarias/*`, `nominas/importaciones-historicas/*`) **solo se documentan** (N4) y no se tocan.
+
+**Contexto.** Hay rutas que responden 422 ante un cuerpo vacío porque el `FormRequest` o `$request->validate()` corre **antes** de comprobar que el recurso pertenece a la empresa del usuario. No filtran datos, pero (a) revelan la existencia de recursos ajenos (422 en vez de 404/403) y (b) la prueba dinámica de aislamiento no es concluyente para ellas. Su autorización se revisó solo leyendo código.
+
+**Rutas (14):** `PUT empresas/{empresa}`, `PATCH empresas/{empresa}/estado`, `POST empresas/{empresa}/logo`, `POST empresas/{empresa}/sedes`, `PUT empresas/{empresa}/sedes/{sede}`, `POST empresas/{empresa}/areas`, `POST empresas/{empresa}/reglas-tardanza`, `POST empresas/{empresa}/cuentas-bancarias`, `PUT empresas/{empresa}/cuentas-bancarias/{cuenta}`, `PATCH empresas/{empresa}/cuentas-bancarias/{cuenta}/estado`, `PUT usuarios/{usuario}`, `PATCH usuarios/{usuario}/rol`, `PATCH usuarios/{usuario}/estado`, `PUT horarios/{horario}`. (Lista completa, incluidas las de Nóminas, en `AislamientoRutasTest::VALIDAN_ANTES_DE_AUTORIZAR`.)
 
 **Criterios de aceptación.**
 - [ ] En cada una, la comprobación de pertenencia/permiso ocurre antes de la validación del cuerpo (en `authorize()` del `FormRequest` o antes de `validate()`), de modo que un recurso ajeno responde 403/404 también con cuerpo inválido.
-- [ ] `AislamientoRutasTest` envía un **cuerpo válido** para cada una (fábricas o payloads por ruta) y confirma 403/404 sin modificar nada del recurso ajeno.
-- [ ] `VALIDAN_ANTES_DE_AUTORIZAR` queda vacía y se elimina la excepción del test.
-- [ ] No cambian rutas, campos ni respuestas exitosas (solo el orden de comprobación y el código de error para recursos ajenos).
+- [ ] `AislamientoRutasTest` envía un **cuerpo válido** para cada una y confirma 403/404 sin modificar nada del recurso ajeno.
+- [ ] Esas 14 salen de `VALIDAN_ANTES_DE_AUTORIZAR`; las de Nóminas permanecen en la lista como excepción documentada.
+- [ ] No cambian rutas, campos ni respuestas exitosas; **no se modifica nada de Nóminas**.
 
 ---
 
@@ -114,6 +121,12 @@ Prioridades: **P0** = bloquea el lanzamiento público; **P1** = alta, siguiente 
 - [ ] Un test del interceptor de `api.js` comprueba que renueva antes de la petición y que un 401 cierra la sesión.
 - [ ] El job de CI ejecuta `npm ci`, `npm run lint` y `npm test` para el frontend.
 - [ ] Se corrige o se documenta el error de lint preexistente en `src/hooks/useCurrentUser.js` (`set-state-in-effect`) para que el lint pueda ser obligatorio.
+
+---
+
+## Documentado, no se toca: riesgos en Nóminas
+
+No es un issue de trabajo: son los riesgos N1 a N5 de `docs/seguridad/estado-hardening.md` (dos búsquedas por id sin filtro de empresa, 20 modelos sin scope, 32 rutas que validan antes de autorizar, 32 `withoutGlobalScope`), **pendientes de decisión del responsable de Nóminas**. Si ese responsable decide actuar, se abrirá un issue propio bajo su dirección.
 
 ---
 

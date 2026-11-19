@@ -15,10 +15,10 @@ Dónde se establece el contexto:
 
 | Punto de entrada | Contexto |
 |---|---|
-| `JwtMiddleware` | Empresa del token, restaurada al terminar. Corre **antes** de resolver los bindings de modelo (`prependToPriorityList`): antes se resolvían `{proceso}`, `{ciclo}`… sin empresa definida y solo los salvaba el respaldo por usuario |
+| `JwtMiddleware` | Empresa del token, restaurada al terminar. Los bindings de modelo (`{proceso}`, `{ciclo}`…) se siguen resolviendo **antes** de este middleware, como en `main`; ahí filtra el respaldo por usuario autenticado (paso 3 del scope). No se cambió la prioridad del middleware para no alterar el orden 401/404 de las rutas |
 | `AutenticarCandidato` | Modo sistema con motivo (el candidato es global por correo; las consultas se filtran por ese correo) |
 | `/api/publico/*` | `contexto.sistema:<motivo>`: la empresa sale del proceso/token resuelto por el servidor, nunca del request. `PortalEmpleosService::postular` fija la empresa del proceso (`EmpresaContext::como`) |
-| Jobs | `TenantServiceProvider`: la empresa del contexto viaja en el payload (`empresa_contexto`) y el worker la restaura y la devuelve al terminar |
+| Jobs | `TenantServiceProvider`: la empresa del contexto viaja en el payload (`empresa_contexto`) y el worker la restaura y la devuelve al terminar. **Excepción: los jobs de Nóminas** conservan el comportamiento de `main` (en el worker, sin filtro de empresa; no heredan el contexto) por la regla permanente |
 | Comandos | `reclutamiento:cerrar-intentos-vencidos` y `reclutamiento:vencer-candidatos` recorren cada empresa con su contexto; ambos aceptan `--empresa=ID` |
 | Seeders | `DatabaseSeeder` en modo sistema con motivo |
 
@@ -29,10 +29,16 @@ Dónde se establece el contexto:
 | Hallazgo | Corrección |
 |---|---|
 | **`Horario` sin scope y sin comprobación de pertenencia** en `update`, `duplicar` y `cambiarEstado`: un usuario con `horarios.editar/crear` de la empresa A podía alterar o duplicar horarios de la B (IDOR). Lo detectó `AislamientoRutasTest` | `HorarioController::exigirDeLaEmpresaActiva` (404 si el horario no es de la empresa activa) |
-| `BoletaController::registrarHorasExtraManual` buscaba el colaborador por id sin empresa | Filtro `empresa_id` de la empresa autorizada del ciclo |
-| `CicloRemunerativoController::resolverIncidenciaPendienteCierre` buscaba la incidencia por id sin empresa | Filtro `empresa_id` de la empresa autorizada del ciclo |
-| Route model binding resuelto antes de `jwt` | `JwtMiddleware` con prioridad previa a `SubstituteBindings` |
 | `AplicacionPruebaService::cerrarVencidos` ignoraba el scope | Ahora usa el scope y se ejecuta por empresa desde el comando |
+
+## 2b. Riesgos detectados en Nóminas (NO corregidos: regla permanente)
+
+La regla permanente prohíbe modificar Nóminas, incluso para corregir seguridad. Estos dos usos reciben un id de la ruta y no filtran por la empresa autorizada; **quedan documentados, pendientes de decisión del responsable de Nóminas** (detalle en `docs/seguridad/estado-hardening.md`, N1 y N2):
+
+| Archivo | Uso | Corrección propuesta (no aplicada) |
+|---|---|---|
+| `Nominas/Http/Controllers/BoletaController.php:340` | `Colaborador::withoutGlobalScopes()->findOrFail($colaborador)` | `->where('empresa_id', $empresa->id)` |
+| `Nominas/Http/Controllers/CicloRemunerativoController.php:409` | `AsistenciaIncidencia::withoutGlobalScope(EmpresaScope::class)->findOrFail($incidencia)` | `->where('empresa_id', $empresa->id)` o confirmar que `resolverIncidencia()` valida la pertenencia |
 
 ## 3. Auditoría de los usos de `withoutGlobalScope(s)`
 
@@ -80,12 +86,12 @@ La empresa del cálculo ya fue autorizada por el caso de uso y puede no ser la a
 | `Nominas/Services/PlanillaComplementariaService.php:761, 1512, 1676, 1751` | Bloqueo/lectura de colaboradores de la complementaria |
 | `Nominas/Support/ValorHoraOrdinaria.php:37` | Promedio por `colaborador_id` de un colaborador autorizado. **Mejora pendiente:** pasar `empresa_id` |
 
-### 3.4 Corregidos
+### 3.4 Corregidos (fuera de Nóminas)
 | Archivo | Cambio |
 |---|---|
-| `Nominas/Http/Controllers/BoletaController.php:340` | `->where('empresa_id', $empresa->id)` |
-| `Nominas/Http/Controllers/CicloRemunerativoController.php:409` | `->where('empresa_id', $empresa->id)` |
 | `Reclutamiento/Application/AplicacionPruebaService.php:277` | **Eliminado** el bypass (usa el scope dentro del contexto de empresa) |
+
+(`BoletaController:340` y `CicloRemunerativoController:409` figuran en §2b: sin corregir.)
 
 ### 3.5 Reclutamiento: flujos públicos por token y tareas de sistema
 | Archivo:línea | Uso | Veredicto |
@@ -113,8 +119,8 @@ La empresa del cálculo ya fue autorizada por el caso de uso y puede no ser la a
 
 ## 6. Pendientes y limitaciones (honestas)
 
-1. **35 modelos con `empresa_id` no tienen `EmpresaScope`**: `Colaborador`, `Boleta`, `CicloRemunerativo`, `Horario`, `Sede`, `User`, `PlanillaComplementaria`, `LiquidacionCese`, `ConsumoComida*`, `NominaImportacionHistorica*`, `Consentimiento`, `PruebaIntento`, entre otros. Su aislamiento depende de comprobaciones explícitas por controlador o servicio (`tieneAccesoA`, `autorizarAccion`, `empresaAutorizadaDelCiclo`…). Hoy las rutas están cubiertas por el test, pero **no hay defensa en profundidad**. Añadir el scope a los más sensibles (Colaborador, Boleta, CicloRemunerativo) exige revisar las consultas multiempresa del administrador global: se propone como trabajo aparte.
-2. **46 rutas responden 422 en la sonda** porque validan el cuerpo antes de autorizar; con cuerpo vacío la prueba no es concluyente. Se revisó **por lectura de código** que cada una autoriza (servicio o controlador). Están enumeradas en `AislamientoRutasTest::VALIDAN_ANTES_DE_AUTORIZAR`: una ruta nueva con 422 obliga a revisarla. **No se probó con cuerpos válidos.**
+1. **35 modelos con `empresa_id` no tienen `EmpresaScope`**: 20 de Nóminas (solo documentados, no se tocan) y 15 fuera de Nóminas (`Colaborador`, `Horario`, `Sede`, `User`, `EmpresaCuentaBancaria`, `EmpresaUsuario`, `ColaboradorPeriodoPrueba` y 8 de Selección; issue de seguimiento). Su aislamiento depende de comprobaciones explícitas por controlador o servicio (`tieneAccesoA`, `autorizarAccion`, `empresaAutorizadaDelCiclo`…). Hoy las rutas están cubiertas por el test, pero **no hay defensa en profundidad**. Añadir el scope exige revisar las consultas multiempresa del administrador global: se propone como trabajo aparte.
+2. **46 rutas responden 422 en la sonda** (32 de Nóminas, solo documentadas, y 14 fuera de Nóminas) porque validan el cuerpo antes de autorizar; con cuerpo vacío la prueba no es concluyente. Se revisó **por lectura de código** que cada una autoriza (servicio o controlador). Están enumeradas en `AislamientoRutasTest::VALIDAN_ANTES_DE_AUTORIZAR`: una ruta nueva con 422 obliga a revisarla. **No se probó con cuerpos válidos.**
 3. Los tests existentes parten en un modo sistema de base declarado (`TestCase`), porque muchos invocan servicios y modelos sin petición HTTP. Las peticiones HTTP con JWT no se ven afectadas (el middleware fija la empresa) y los tests de aislamiento activan el modo estricto (`$aislamientoEstricto = true`).
 4. Las rutas públicas corren en modo sistema por grupo (no por método): la acotación por empresa la hace cada servicio con la empresa del proceso o token. Es más grueso que un contexto por consulta y se documenta como deuda.
 5. `EmpresaScope` seguirá usando el usuario del guard `api` como respaldo (3er paso) para respuestas en streaming; debe quitarse cuando todas las rutas estén bajo el contexto.

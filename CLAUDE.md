@@ -22,6 +22,13 @@ Estado actual: proyecto en producción con usuarios reales. Existen siete módul
 
 Antes de implementar cualquier funcionalidad, inspeccionar siempre el estado real del repositorio: este archivo describe la intención y las reglas, el código es la fuente de verdad.
 
+REGLA PERMANENTE: Nóminas y datos existentes intactos
+
+1. No se modifica nada del módulo Nóminas: código (agento-backend/app/Modules/Nominas), migraciones, tests, configuración ni rutas propias. Esto incluye correcciones de seguridad. Si se detecta un riesgo en Nóminas, se documenta (docs/seguridad/estado-hardening.md, sección "Nóminas: riesgos detectados") como "pendiente de decisión del responsable de Nóminas" y NO se corrige.
+2. No se modifican datos existentes en la base de datos: sin migraciones de datos, UPDATE, DELETE ni backfills sobre registros que ya existen. Los seeders solo pueden insertar en tablas nuevas.
+3. Solo se permiten tablas o columnas NUEVAS, aditivas y reversibles (con down), y fuera de Nóminas. Para que las filas existentes tengan un valor en una columna nueva se usa el DEFAULT de la columna, nunca un UPDATE.
+4. Los cambios transversales (scope de empresa, middleware, jobs, comandos, seeders, configuración) no pueden alterar el comportamiento observable de Nóminas. Si lo hicieran, Nóminas debe conservar el comportamiento de main sin editar sus archivos (por ejemplo, excluyéndolo explícitamente en el código transversal) y debe demostrarse comparando sus tests y el diff contra main (git diff main...<rama> --stat -- app/Modules/Nominas database/).
+
 Stack tecnológico
 
 Backend
