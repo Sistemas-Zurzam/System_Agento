@@ -1470,6 +1470,7 @@ Auditoria: bitácora de eventos (middleware RegistrarAuditoria, eventos de UI, A
 Configuracion: empresas, sedes, áreas, usuarios, roles, permisos y el aislamiento por empresa (EmpresaScope, EmpresaContext).
 Nominas: planilla, boletas, CTS, liquidaciones, bonos, PLAME y exportes bancarios.
 Personas: colaboradores, legajos, ceses, periodos de prueba.
+PortalAgento: publicación de ofertas del panel de Reclutamiento en el portal público Agento. API pública de solo lectura /api/v1 (contrato openapi.yaml de Agento), pestaña «Publicación en Agento» del panel, sincronización con el estado del proceso. Docs: docs/agento/api-v1.md, flujo-publicacion.md, brechas-contrato.md.
 PortalCliente: portal de gerencia y de clientes externos.
 Reclutamiento: solicitudes de personal, procesos, portal público de empleos (/empleos), postulaciones, ATS, pruebas, entrevistas, banco de talentos, contratación, derechos ARCO y antivirus de archivos.
 

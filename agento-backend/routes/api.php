@@ -429,3 +429,6 @@ Route::middleware('jwt')->group(function () {
 
 // Selección y Reclutamiento (/api/seleccion y portal público /api/publico).
 require __DIR__.'/seleccion.php';
+
+// Publicación de ofertas en Agento (API pública /api/v1 y pestaña del panel).
+require __DIR__.'/agento.php';

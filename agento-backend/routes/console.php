@@ -11,6 +11,9 @@ Schedule::command('reclutamiento:vencer-candidatos --ejecutar')->dailyAt('03:00'
 // Reintenta el escaneo antivirus de documentos pendientes o con error (antivirus caído).
 Schedule::command('reclutamiento:escanear-documentos')->everyTenMinutes()->withoutOverlapping();
 
+// Publicación en Agento: sale lo programado y vence lo cumplido (cada empresa con su contexto).
+Schedule::command('agento:sincronizar-publicaciones')->everyFiveMinutes()->withoutOverlapping();
+
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
 })->purpose('Display an inspiring quote');

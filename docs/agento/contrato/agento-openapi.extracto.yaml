@@ -1,0 +1,554 @@
+openapi: 3.1.0
+info:
+  title: 'Agento: extracto del contrato usado por /api/v1'
+  version: 0.1.0
+x-origen: 'Extracto de frontend/docs/openapi.yaml del portal Agento (esquemas de ofertas, empresas y catálogos). No editar a mano: se regenera desde el contrato completo.'
+paths: {  }
+components:
+  schemas:
+    ApiError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          description: 'Código estable para el cliente, por ejemplo `already_applied`.'
+        message:
+          type: string
+          description: 'Texto en español, listo para mostrar a la persona.'
+        details:
+          description: 'Datos extra opcionales (por ejemplo, el detalle de una validación).'
+    Area:
+      type: string
+      enum:
+        - 'Ventas y comercial'
+        - Administración
+        - 'Atención al cliente'
+        - 'Logística y almacén'
+        - 'Producción y operaciones'
+        - Tecnología
+        - Salud
+        - Educación
+        - 'Construcción y minería'
+        - 'Gastronomía y turismo'
+        - 'Finanzas y contabilidad'
+    AreaCount:
+      type: array
+      items:
+        type: object
+        properties:
+          area:
+            $ref: '#/components/schemas/Area'
+          count:
+            type: integer
+            minimum: -9007199254740991
+            maximum: 9007199254740991
+        required:
+          - area
+          - count
+    Catalog:
+      type: object
+      properties:
+        kind:
+          $ref: '#/components/schemas/CatalogKind'
+        items:
+          type: array
+          items:
+            type: string
+      required:
+        - kind
+        - items
+    CatalogKind:
+      type: string
+      enum:
+        - cargos
+        - areas
+        - beneficios
+    CatalogList:
+      type: array
+      items:
+        $ref: '#/components/schemas/Catalog'
+    CompaniesResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyListItem'
+      required:
+        - items
+    CompanyDirectoryResponse:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/CompanyListItem'
+        sectors:
+          type: array
+          items:
+            type: string
+      required:
+        - items
+        - sectors
+    CompanyListItem:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        verified:
+          type: boolean
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        reviewsCount:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        respondsFast:
+          type: boolean
+        sector:
+          type: string
+        openJobs:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        location:
+          type: string
+      required:
+        - id
+        - slug
+        - name
+        - verified
+        - rating
+        - reviewsCount
+        - respondsFast
+        - sector
+        - openJobs
+        - location
+    CompanyProfile:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        verified:
+          type: boolean
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        reviewsCount:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        respondsFast:
+          type: boolean
+        sector:
+          type: string
+        ruc:
+          type: string
+        size:
+          $ref: '#/components/schemas/CompanySize'
+        email:
+          type: string
+          format: email
+          pattern: '^(?:[A-Za-z0-9_''+\-]+\.)*[A-Za-z0-9_''+\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\-]*\.)+[A-Za-z]{2,}$'
+        phone:
+          default: ''
+          type: string
+        website:
+          default: ''
+          type: string
+        logoUrl:
+          default: null
+          type:
+            - string
+            - 'null'
+        coverUrl:
+          default: null
+          type:
+            - string
+            - 'null'
+        description:
+          default: ''
+          type: string
+        culture:
+          default: ''
+          type: string
+        benefits:
+          default: {  }
+          type: array
+          items:
+            type: string
+        sedes:
+          default: {  }
+          type: array
+          items:
+            $ref: '#/components/schemas/Sede'
+        gallery:
+          default: {  }
+          type: array
+          items:
+            type: string
+        searchCredits:
+          default: 20
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        planId:
+          default: gratis
+          $ref: '#/components/schemas/PlanId'
+      required:
+        - id
+        - slug
+        - name
+        - verified
+        - rating
+        - reviewsCount
+        - respondsFast
+        - sector
+        - ruc
+        - size
+        - email
+    CompanySize:
+      type: string
+      enum:
+        - 1-10
+        - 11-50
+        - 51-200
+        - 201-500
+        - 500+
+    CompanySummary:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        name:
+          type: string
+        verified:
+          type: boolean
+        rating:
+          type: number
+          minimum: 0
+          maximum: 5
+        reviewsCount:
+          type: integer
+          minimum: 0
+          maximum: 9007199254740991
+        respondsFast:
+          type: boolean
+        sector:
+          type: string
+      required:
+        - id
+        - slug
+        - name
+        - verified
+        - rating
+        - reviewsCount
+        - respondsFast
+        - sector
+    GetCompaniesSlugJobsResponse:
+      type: array
+      items:
+        $ref: '#/components/schemas/Job'
+    Job:
+      type: object
+      properties:
+        id:
+          type: string
+        slug:
+          type: string
+        title:
+          type: string
+        company:
+          $ref: '#/components/schemas/CompanySummary'
+        location:
+          type: object
+          properties:
+            departamento:
+              type: string
+            provincia:
+              type: string
+            distrito:
+              type: string
+          required:
+            - departamento
+            - provincia
+            - distrito
+        area:
+          $ref: '#/components/schemas/Area'
+        level:
+          $ref: '#/components/schemas/Level'
+        schedule:
+          $ref: '#/components/schemas/Schedule'
+        mode:
+          $ref: '#/components/schemas/Mode'
+        salary:
+          anyOf:
+            -
+              type: object
+              properties:
+                min:
+                  type: number
+                max:
+                  type: number
+              required:
+                - min
+                - max
+            -
+              type: 'null'
+        postedAt:
+          type: string
+        expiresAt:
+          default: null
+          type:
+            - string
+            - 'null'
+        noExperience:
+          type: boolean
+        inclusive:
+          type: boolean
+        benefits:
+          type: array
+          items:
+            type: string
+        requirements:
+          type: object
+          properties:
+            mandatory:
+              type: array
+              items:
+                type: string
+            desirable:
+              type: array
+              items:
+                type: string
+          required:
+            - mandatory
+            - desirable
+        summary:
+          type: string
+        description:
+          type: array
+          items:
+            type: string
+        responsibilities:
+          type: array
+          items:
+            type: string
+        applied:
+          default: false
+          type: boolean
+        saved:
+          default: false
+          type: boolean
+        questions:
+          default: {  }
+          type: array
+          items:
+            $ref: '#/components/schemas/ScreeningQuestion'
+      required:
+        - id
+        - slug
+        - title
+        - company
+        - location
+        - area
+        - level
+        - schedule
+        - mode
+        - salary
+        - postedAt
+        - noExperience
+        - inclusive
+        - benefits
+        - requirements
+        - summary
+        - description
+        - responsibilities
+    JobLanding:
+      type: object
+      properties:
+        cargo:
+          type: string
+        lugar:
+          type: string
+        intro:
+          type: string
+        relatedCargos:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobLandingLink'
+        relatedPlaces:
+          type: array
+          items:
+            $ref: '#/components/schemas/JobLandingLink'
+      required:
+        - cargo
+        - lugar
+        - intro
+        - relatedCargos
+        - relatedPlaces
+    JobLandingLink:
+      type: object
+      properties:
+        label:
+          type: string
+        href:
+          type: string
+      required:
+        - label
+        - href
+    JobsPage:
+      type: object
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Job'
+        page:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        pageSize:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        total:
+          type: integer
+          minimum: -9007199254740991
+          maximum: 9007199254740991
+        correctedQuery:
+          default: null
+          type:
+            - string
+            - 'null'
+      required:
+        - items
+        - page
+        - pageSize
+        - total
+    Level:
+      type: string
+      enum:
+        - operativo
+        - asistente
+        - tecnico
+        - analista
+        - supervisor
+        - jefatura
+    Mode:
+      type: string
+      enum:
+        - presencial
+        - remoto
+        - hibrido
+    PlanId:
+      type: string
+      enum:
+        - gratis
+        - pyme
+        - pro
+        - empresa
+    Schedule:
+      type: string
+      enum:
+        - completa
+        - medio_tiempo
+        - por_horas
+        - nocturna
+        - fines_de_semana
+        - regimen_minero
+        - por_campana
+    ScreeningQuestion:
+      type: object
+      properties:
+        id:
+          type: string
+        text:
+          type: string
+        type:
+          type: string
+          enum:
+            - si_no
+            - texto
+        eliminatoria:
+          default: false
+          type: boolean
+      required:
+        - id
+        - text
+        - type
+    Sede:
+      type: object
+      properties:
+        id:
+          type: string
+        departamento:
+          type: string
+          enum:
+            - Amazonas
+            - Áncash
+            - Apurímac
+            - Arequipa
+            - Ayacucho
+            - Cajamarca
+            - Callao
+            - Cusco
+            - Huancavelica
+            - Huánuco
+            - Ica
+            - Junín
+            - 'La Libertad'
+            - Lambayeque
+            - Lima
+            - Loreto
+            - 'Madre de Dios'
+            - Moquegua
+            - Pasco
+            - Piura
+            - Puno
+            - 'San Martín'
+            - Tacna
+            - Tumbes
+            - Ucayali
+        provincia:
+          type: string
+          minLength: 2
+        distrito:
+          type: string
+          minLength: 2
+        direccion:
+          type: string
+          minLength: 4
+      required:
+        - id
+        - departamento
+        - provincia
+        - distrito
+        - direccion
+    Suggestion:
+      type: array
+      items:
+        type: object
+        properties:
+          label:
+            type: string
+          hint:
+            type: string
+        required:
+          - label

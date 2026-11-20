@@ -36,7 +36,7 @@ return [
     'allowed_headers' => ['Authorization', 'Content-Type', 'Accept', 'X-Requested-With', 'X-Candidato-Token'],
 
     // Cabeceras legibles desde JavaScript en peticiones cross-origin.
-    'exposed_headers' => ['Retry-After', 'Content-Disposition'],
+    'exposed_headers' => ['Retry-After', 'Content-Disposition', 'ETag'],
 
     'max_age' => 600,
 
