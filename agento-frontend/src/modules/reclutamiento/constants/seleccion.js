@@ -148,3 +148,27 @@ export function mensajeDeError(error, porDefecto = 'No se pudo completar la acci
 export function tiene(user, ...permisos) {
   return user?.role === 'administrador' || permisos.some((p) => user?.permisos?.includes(p));
 }
+
+/** Estado de la publicación de un proceso en Agento (portal público de empleos). */
+export const ESTADOS_AGENTO = {
+  borrador: { label: 'Borrador', color: 'default' },
+  programada: { label: 'Programada', color: 'blue' },
+  publicada: { label: 'Publicada', color: 'green' },
+  pausada: { label: 'Pausada', color: 'orange' },
+  retirada: { label: 'Retirada', color: 'red' },
+  vencida: { label: 'Vencida', color: 'default' },
+};
+
+export const EVENTOS_AGENTO = {
+  creada: 'Publicación creada',
+  guardada: 'Datos guardados',
+  publicar: 'Publicada en Agento',
+  programar: 'Publicación programada',
+  pausar: 'Pausada',
+  reanudar: 'Reanudada',
+  retirar: 'Retirada',
+  renovar: 'Renovada',
+  destacada: 'Destacada',
+  destacado_quitado: 'Destacado quitado',
+  sincronizada: 'Actualizada por el proceso',
+};

@@ -10,6 +10,7 @@ import EvaluacionConocimientosForm from '../components/EvaluacionConocimientosFo
 import EvaluacionPsicometricaForm from '../components/EvaluacionPsicometricaForm';
 import PerfilProcesoForm from '../components/PerfilProcesoForm';
 import PostulacionDrawer from '../components/PostulacionDrawer';
+import PublicacionAgentoTab from '../components/PublicacionAgentoTab';
 import TableroPostulaciones from '../components/TableroPostulaciones';
 import {
   CAUSAS_DESCARTE, ESTADOS_PLAZA, ESTADOS_POSTULACION, ESTADOS_PROCESO, ETAPAS, ETIQUETA_ETAPA, MODALIDADES, RESULTADOS_ATS, TIPOS_CONTRATO, etiquetaDe, mensajeDeError, tiene,
@@ -406,6 +407,7 @@ export default function ProcesoDetallePage({ user, procesoId, onVolver }) {
                     </>
                   ),
                 },
+                { key: 'agento', label: 'Publicación en Agento', children: <PublicacionAgentoTab procesoId={proceso.id} proceso={proceso} editable={gestiona && !finalizado} onCambio={recargar} /> },
                 { key: 'evaluaciones', label: 'Evaluaciones', children: <Evaluaciones proceso={proceso} puedeInvitar={tiene(user, 'seleccion.candidatos.gestionar')} /> },
                 { key: 'actividad', label: 'Actividad', children: <Actividad key={version} procesoId={proceso.id} /> },
               ]}

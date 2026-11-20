@@ -83,6 +83,7 @@ function buildMenuItems(isAdmin, puedeVerHorarios, puedeVerAsistencia, puedeVerN
     { key: 'seleccion-dashboard', label: 'Dashboard', visible: permisosSeleccion.seguimiento || permisosSeleccion.algun },
     { key: 'seleccion-solicitudes', label: 'Solicitudes', visible: permisosSeleccion.solicitudes },
     { key: 'seleccion-procesos', label: 'Procesos de selección', visible: permisosSeleccion.procesos },
+    { key: 'seleccion-publicar-agento', label: 'Publicar en Agento', visible: permisosSeleccion.procesos },
     { key: 'seleccion-candidatos', label: 'Candidatos', visible: permisosSeleccion.candidatos },
     { key: 'seleccion-banco-talentos', label: 'Banco de talentos', visible: permisosSeleccion.banco },
     { key: 'seleccion-evaluaciones', label: 'Evaluaciones', visible: permisosSeleccion.evaluaciones },

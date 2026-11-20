@@ -7,6 +7,7 @@ import DashboardSeleccion from './DashboardSeleccion';
 import EvaluacionesPage from './EvaluacionesPage';
 import ProcesoDetallePage from './ProcesoDetallePage';
 import ProcesosPage from './ProcesosPage';
+import PublicarAgentoPage from './PublicarAgentoPage';
 import SolicitudesPage from './SolicitudesPage';
 
 /**
@@ -52,6 +53,8 @@ export default function GestionSeleccion({ user, vista, procesoId, navigate }) {
       return permisos.candidatos ? <CandidatosPage user={user} onAbrirProceso={abrirProceso} /> : sinAcceso;
     case 'banco-talentos':
       return permisos.banco ? <BancoTalentosPage user={user} /> : sinAcceso;
+    case 'publicar-agento':
+      return permisos.procesos ? <PublicarAgentoPage user={user} onAbrirProceso={abrirProceso} /> : sinAcceso;
     case 'arco':
       return permisos.banco ? <ArcoPage /> : sinAcceso;
     case 'evaluaciones':

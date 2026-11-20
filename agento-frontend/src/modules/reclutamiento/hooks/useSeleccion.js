@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { agentoPublicacionApi } from '../services/agentoPublicacionApi';
 import { seleccionApi } from '../services/seleccionApi';
 import { useConsulta } from './useConsulta';
 
@@ -126,4 +127,43 @@ export function useUsuariosSeleccion(habilitado = true) {
 export function useOpcionesContratacion(habilitado) {
   const cargar = useCallback(() => seleccionApi.contratacion.opciones(), []);
   return useConsulta(cargar, { inmediata: habilitado });
+}
+
+// ── Publicación en Agento ──────────────────────────────────────────────────────────────
+
+export function usePublicacionAgento(procesoId) {
+  const cargar = useCallback(() => agentoPublicacionApi.obtener(procesoId), [procesoId]);
+  const consulta = useConsulta(cargar);
+  return { ...consulta, acciones: agentoPublicacionApi };
+}
+
+export function useCatalogosAgento() {
+  const cargar = useCallback(() => agentoPublicacionApi.catalogos(), []);
+  return useConsulta(cargar);
+}
+
+export function usePerfilEmpresaAgento() {
+  const cargar = useCallback(() => agentoPublicacionApi.empresa(), []);
+  return useConsulta(cargar);
+}
+
+/** Puestos de la empresa activa en Agento; `version` fuerza la recarga tras crear uno. */
+export function usePuestosAgento(version) {
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cargar = useCallback(() => agentoPublicacionApi.puestos(), [version]);
+  return useConsulta(cargar);
+}
+
+export function useHistorialAgento(procesoId, version) {
+  // `version` fuerza la recarga cuando cambia (después de cada acción).
+  const cargar = useCallback(() => agentoPublicacionApi.historial(procesoId).then((d) => d.map((e) => ({ ...e, _v: version }))), [procesoId, version]);
+  return useConsulta(cargar);
+}
+
+/** Estado en Agento de los procesos de la página visible (columna de la lista). */
+export function useEstadosAgento(ids) {
+  const clave = ids.join(',');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const cargar = useCallback(() => (ids.length ? agentoPublicacionApi.estados(ids) : Promise.resolve({})), [clave]);
+  return useConsulta(cargar);
 }
