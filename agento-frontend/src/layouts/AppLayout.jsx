@@ -9,6 +9,8 @@ import GestionRemuneraciones from '../pages/nominas/GestionRemuneraciones';
 import GestionAsistencias from '../modules/asistencia/pages/GestionAsistencias';
 import GestionTickets from '../pages/soporte/GestionTickets';
 import GestionSeleccion from '../modules/reclutamiento/pages/GestionSeleccion';
+import GestionCrm from '../modules/crm/pages/GestionCrm';
+import { VISTAS_CRM } from '../modules/crm/constants/crm';
 
 const { Content } = Layout;
 
@@ -20,6 +22,7 @@ const SECCIONES = {
   'nominas-liquidaciones': { title: 'Nóminas', subtitle: 'Liquidaciones' },
   'soporte-tickets': { title: 'Soporte', subtitle: 'Gestión de tickets' },
   seleccion: { title: 'Selección y reclutamiento', subtitle: 'Solicitudes, procesos y candidatos' },
+  crm: { title: 'CRM', subtitle: 'Conversaciones de WhatsApp' },
 };
 
 // Vistas de Selección: /seleccion, /seleccion/<vista> y /seleccion/procesos/:id.
@@ -69,6 +72,15 @@ function routeFromPath(pathname) {
       seleccionVista: rutaSeleccion[1],
       procesoId: rutaSeleccion[2] ? Number(rutaSeleccion[2]) : null,
     };
+  }
+
+  if (normalizedPath === '/crm') {
+    return { section: 'crm', crmVista: 'conversaciones' };
+  }
+
+  const rutaCrm = normalizedPath.match(/^\/crm\/([a-z-]+)$/);
+  if (rutaCrm && VISTAS_CRM.includes(rutaCrm[1])) {
+    return { section: 'crm', crmVista: rutaCrm[1] };
   }
 
   if (normalizedPath === '/soporte/tickets') {
@@ -124,6 +136,10 @@ export default function AppLayout({
       navigate(vista === 'dashboard' ? '/seleccion' : `/seleccion/${vista}`);
       return;
     }
+    if (key.startsWith('crm-')) {
+      navigate(`/crm/${key.replace('crm-', '')}`);
+      return;
+    }
     const paths = {
       'nominas-personas': '/nominas/personas',
       'nominas-remuneraciones': '/nominas/remuneraciones',
@@ -143,7 +159,9 @@ export default function AppLayout({
       <Sidebar
         collapsed={collapsed}
         onCollapse={setCollapsed}
-        selectedKey={route.section === 'seleccion' ? `seleccion-${route.seleccionVista}` : route.section}
+        selectedKey={route.section === 'seleccion'
+          ? `seleccion-${route.seleccionVista}`
+          : route.section === 'crm' ? `crm-${route.crmVista}` : route.section}
         onSelect={handleSectionSelect}
         user={user}
       />
@@ -197,6 +215,7 @@ export default function AppLayout({
               navigate={navigate}
             />
           )}
+          {route.section === 'crm' && <GestionCrm user={user} vista={route.crmVista} />}
         </Content>
       </Layout>
     </Layout>

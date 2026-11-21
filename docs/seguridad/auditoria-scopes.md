@@ -108,6 +108,7 @@ La empresa del cálculo ya fue autorizada por el caso de uso y puede no ser la a
 ## 4. Casos que cruzan empresas por diseño
 
 - **`PortalEmpleosService::misPostulaciones` y `perfilPrevio`**: un correo verificado ve **sus propias** postulaciones en todas las empresas (es la misma persona). Corren en el modo sistema declarado por `AutenticarCandidato` y filtran por el correo del acceso verificado. No exponen datos internos (notas, puntajes ni etapa interna).
+- **Webhook de WhatsApp del CRM** (`Crm\Application\RecibirWebhookWhatsapp::canal`): Meta no envía la empresa, así que el canal se busca en modo sistema **solo por el token secreto de 40 caracteres de la URL** (`webhook_token`, único). Encontrado el canal, todo lo demás (conversaciones, mensajes, estados) corre en `EmpresaContext::como(empresa del canal)` y cada aviso se valida con la firma `X-Hub-Signature-256` del App secret del canal.
 - **Administrador global** (`User::esAdministradorGlobal`): un `administrador` de cualquier empresa opera en todas, a propósito. Está fijado por `test_el_administrador_global_opera_en_todas_las_empresas_por_diseno`. Las rutas que reciben `{empresa}` lo validan con `tieneAccesoA`.
 
 ## 5. Pruebas
