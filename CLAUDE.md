@@ -18,9 +18,16 @@ Los nombres agento-backend y agento-frontend corresponden a la estructura técni
 
 El sistema y dominio funcional se denomina Agento.
 
-Estado actual: proyecto en fase inicial/scaffolding. No asumir que existe lógica de negocio, Controllers, rutas API, Models, Services, módulos, esquema multiempresa u otras implementaciones salvo que estén verificadas directamente en el código.
+Estado actual: proyecto en producción con usuarios reales. Existen siete módulos de negocio, esquema multiempresa, API REST, panel interno, portal público de empleos, CI/CD y reglas de seguridad obligatorias. El detalle verificado está en la sección "Estado real del proyecto" (al final de este archivo) y las reglas de seguridad en "Reglas de seguridad obligatorias".
 
-Antes de implementar cualquier funcionalidad, inspeccionar siempre el estado real del repositorio.
+Antes de implementar cualquier funcionalidad, inspeccionar siempre el estado real del repositorio: este archivo describe la intención y las reglas, el código es la fuente de verdad.
+
+REGLA PERMANENTE: Nóminas y datos existentes intactos
+
+1. No se modifica nada del módulo Nóminas: código (agento-backend/app/Modules/Nominas), migraciones, tests, configuración ni rutas propias. Esto incluye correcciones de seguridad. Si se detecta un riesgo en Nóminas, se documenta (docs/seguridad/estado-hardening.md, sección "Nóminas: riesgos detectados") como "pendiente de decisión del responsable de Nóminas" y NO se corrige.
+2. No se modifican datos existentes en la base de datos: sin migraciones de datos, UPDATE, DELETE ni backfills sobre registros que ya existen. Los seeders solo pueden insertar en tablas nuevas.
+3. Solo se permiten tablas o columnas NUEVAS, aditivas y reversibles (con down), y fuera de Nóminas. Para que las filas existentes tengan un valor en una columna nueva se usa el DEFAULT de la columna, nunca un UPDATE.
+4. Los cambios transversales (scope de empresa, middleware, jobs, comandos, seeders, configuración) no pueden alterar el comportamiento observable de Nóminas. Si lo hicieran, Nóminas debe conservar el comportamiento de main sin editar sus archivos (por ejemplo, excluyéndolo explícitamente en el código transversal) y debe demostrarse comparando sus tests y el diff contra main (git diff main...<rama> --stat -- app/Modules/Nominas database/).
 
 Stack tecnológico
 
@@ -1443,5 +1450,76 @@ Antes de hacer algo que introduce algo nuevo, Claude debe preguntarse:
 ¿Estoy introduciendo complejidad innecesaria?
 ¿Necesito realmente modificar este archivo?
 ¿Tengo autorización para ejecutar esta herramienta o prueba?
+
+Estado real del proyecto (actualizado 2026-11-19)
+
+Esta sección es un resumen verificado contra el repositorio. Si algo no coincide con el código, manda el código y se corrige este archivo.
+
+Stack y versiones
+
+Backend: PHP ^8.3, Laravel ^13.17, MySQL (base oficial), tymon/jwt-auth ^2.3, dompdf, intervention/image, phpspreadsheet, resend (correo en producción). Tests en PHPUnit sobre SQLite en memoria.
+
+Frontend: React ^19, Vite ^8, Ant Design ^6, Tailwind ^4, Axios. JavaScript (JSX), sin TypeScript. Sin framework de tests de frontend; hay ESLint.
+
+Otros: agento-print-service/ (impresión de carnets en Windows) y agento-plugins/ (plugins de Claude Code).
+
+Módulos del backend (agento-backend/app/Modules)
+
+Asistencia: marcaciones, horarios, incidencias, control de acceso por carnet, periodos.
+Auditoria: bitácora de eventos (middleware RegistrarAuditoria, eventos de UI, ARCO y seguridad).
+Configuracion: empresas, sedes, áreas, usuarios, roles, permisos y el aislamiento por empresa (EmpresaScope, EmpresaContext).
+Nominas: planilla, boletas, CTS, liquidaciones, bonos, PLAME y exportes bancarios.
+Personas: colaboradores, legajos, ceses, periodos de prueba.
+PortalAgento: publicación de ofertas del panel de Reclutamiento en el portal público Agento. API pública de solo lectura /api/v1 (contrato openapi.yaml de Agento), pestaña «Publicación en Agento» del panel, sincronización con el estado del proceso. Docs: docs/agento/api-v1.md, flujo-publicacion.md, brechas-contrato.md.
+PortalCliente: portal de gerencia y de clientes externos.
+Reclutamiento: solicitudes de personal, procesos, portal público de empleos (/empleos), postulaciones, ATS, pruebas, entrevistas, banco de talentos, contratación, derechos ARCO y antivirus de archivos.
+
+Las rutas están en agento-backend/routes/api.php y routes/seleccion.php (prefijo /api; interno /api/seleccion, público /api/publico). El frontend vive en agento-frontend/src (modules/reclutamiento, módulos por dominio, services/api.js).
+
+Comandos
+
+Backend (desde agento-backend; en Windows usar PowerShell porque php no está en el PATH de Bash):
+- Tests: php artisan test. La suite completa puede agotar la memoria de PHP en local: php -d memory_limit=1G vendor/phpunit/phpunit/phpunit.
+- Formato: vendor/bin/pint (ejecutarlo solo sobre los archivos que se tocan: reformatea el resto).
+- Desarrollo: composer dev.
+Frontend (desde agento-frontend): npm run dev, npm run build, npm run lint.
+
+Convenciones
+
+- Commits convencionales (feat:, fix:, test:, docs:, ci:, refactor:), mensajes en español.
+- Migraciones aditivas, reversibles (down) y re-ejecutables (Schema::hasTable / hasColumn / hasIndex): MySQL no revierte el DDL si una migración falla a medias. Nombres de índices de hasta 64 caracteres: dar nombre explícito a los largos. Los tests corren en SQLite y no detectan límites de MySQL.
+- Datos con empresa: columna empresa_id y aislamiento por EmpresaScope. Nunca aceptar empresa_id del request.
+- Textos y mensajes al usuario en español.
+
+Despliegue
+
+- Nunca push directo a main. Rama dev = staging (automático); main = producción con aprobación manual del Environment "production".
+- Workflows en .github/workflows: ci.yml (tests, no se pueden omitir), deploy-staging.yml, deploy-production.yml. El despliegue hace modo mantenimiento, respaldo verificado de la base, migrate, cachés, cola y smoke test contra /up. Detalle y rollback en docs/runbooks/despliegue.md; staging en docs/runbooks/staging.md; antivirus en docs/runbooks/clamav.md.
+
+Documentación
+
+docs/analisis-integracion-agento.md (análisis de integración con el portal Agento), docs/runbooks/, docs/seguridad/ (auditoría de scopes, CORS y cabeceras, estado del hardening), docs/legal/pendientes.md (lo que debe validar un abogado), docs/decisiones/ (ADR).
+
+Reglas de seguridad obligatorias
+
+1. Contexto de empresa. EmpresaScope falla CERRADO: sin contexto de empresa ni modo sistema declarado, la consulta lanza EmpresaNoDefinidaException en local/testing y no devuelve filas en producción. La empresa la establecen el middleware JWT (empresa del token), los jobs (viaja en el payload), los comandos (recorren cada empresa con EmpresaContext::como) y el código que lo necesite. Las tareas que cruzan empresas por diseño usan EmpresaContext::comoSistema(fn () => ..., motivo: '...'): el motivo es obligatorio y queda registrado.
+
+2. Prohibido withoutGlobalScope(s) sin motivo. Un ArquitecturaScopesTest falla si aparece uno nuevo fuera de su lista permitida. Antes de añadir uno: ¿sirve EmpresaContext::como o un filtro explícito por empresa_id? Si es inevitable, justificarlo en docs/seguridad/auditoria-scopes.md y actualizar la lista del test. Usar siempre where('empresa_id', ...) explícito junto con él.
+
+3. Autorización por pertenencia. Todo endpoint que reciba un modelo por identificador debe comprobar que pertenece a la empresa del usuario (scope en el modelo o comprobación explícita como tieneAccesoA). Los modelos sin EmpresaScope (p. ej. Colaborador, Horario) dependen de esa comprobación en el controlador o servicio: AislamientoRutasTest recorre las rutas y debe seguir en verde. El rol administrador es global por diseño (User::esAdministradorGlobal).
+
+4. Rate limiting. Todo endpoint público nuevo lleva throttle; los limitadores nombrados (login, auth-refresh, auth-me, portal-listado, portal-detalle, seleccion-codigos, seleccion-verificacion, seleccion-publico) se configuran en config/seguridad.php y config/reclutamiento.php. El login tiene además bloqueo temporal de cuenta tras fallos consecutivos, registrado en Auditoría. Los mensajes de error no deben revelar si un usuario existe.
+
+5. CORS y cabeceras. Los orígenes permitidos salen de CORS_ALLOWED_ORIGINS (config/cors.php); nunca usar comodines ni supports_credentials sin decisión explícita. El middleware CabecerasSeguridad aplica las cabeceras (HSTS solo en HTTPS, CSP en report-only hasta pasarla a bloqueo; ver docs/seguridad/cabeceras-y-cors.md).
+
+6. Sesión. El JWT de acceso dura JWT_TTL (60 min) y el frontend lo renueva antes de que venza (services/sesion.js); un token vencido no se puede renovar. El token se guarda en localStorage: es una decisión abierta (docs/decisiones/ADR-sesion-tokens.md). No registrar tokens ni contraseñas en logs ni en Auditoría.
+
+7. Archivos de candidatos. Almacenamiento privado, nunca URLs públicas. Los documentos nacen pendiente_escaneo y solo se descargan si el antivirus los marca limpios (HTTP 423 en otro caso). Sin antivirus en producción falla cerrado.
+
+8. Datos personales (Ley 29733). El texto de consentimiento es versionado y lo sirve el backend; al postular se verifica versión y hash. Revocación y derechos ARCO por el módulo de Reclutamiento, siempre auditados. No poner datos personales en logs ni en Auditoría: solo identificadores. No redactar textos legales definitivos: va a docs/legal/pendientes.md.
+
+9. Correos con códigos o enlaces de acceso se envían por cola (Mailable cifrado) y nunca por el mailer log fuera de local.
+
+10. Despliegue y base de datos: no omitir tests, no migrar sin respaldo, no cambiar contratos de endpoints existentes salvo agregar errores documentados.
 
 Si alguna respuesta genera duda, inspeccionar primero el código o informar al desarrollador antes de ampliar el alcance.

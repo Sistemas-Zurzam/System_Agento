@@ -51,6 +51,12 @@ trait CreaEscenarioSeleccion
      */
     protected function tearDownCreaEscenarioSeleccion(): void
     {
+        // Solo SQLite en memoria: en MySQL no hay función que descartar y poner $migrated en false
+        // obligaría a ejecutar migrate:fresh (cientos de migraciones) después de CADA prueba.
+        if (DB::getDriverName() !== 'sqlite') {
+            return;
+        }
+
         RefreshDatabaseState::$inMemoryConnections = [];
         RefreshDatabaseState::$migrated = false;
     }
@@ -81,13 +87,18 @@ trait CreaEscenarioSeleccion
         return $usuario->fresh();
     }
 
+    protected function olvidarSesionDePersonal(): void
+    {
+        $this->app['auth']->forgetGuards();
+        $this->app->forgetInstance('tymon.jwt');
+        $this->app->forgetInstance('tymon.jwt.auth');
+    }
+
     protected function cabeceras(User $usuario): array
     {
         // En pruebas la app (y el guard JWT) persiste entre requests: sin
         // esto, el usuario del request anterior quedaría en caché.
-        $this->app['auth']->forgetGuards();
-        $this->app->forgetInstance('tymon.jwt');
-        $this->app->forgetInstance('tymon.jwt.auth');
+        $this->olvidarSesionDePersonal();
 
         return ['Authorization' => 'Bearer '.JWTAuth::fromUser($usuario->fresh())];
     }
@@ -171,13 +182,18 @@ trait CreaEscenarioSeleccion
             'requisitos' => json_encode($excluyentes->mapWithKeys(fn ($id) => [$id => true])->all()),
             'cv' => $this->cvValido(),
             'consentimiento' => '1',
-            'consentimiento_texto' => 'Autorizo el tratamiento de mis datos personales.',
+            'consentimiento_texto' => (string) \App\Modules\Reclutamiento\Models\TextoLegal::where('tipo', 'consentimiento_postulacion')->value('texto'),
             ...$extra,
         ];
     }
 
     protected function postular(ProcesoSeleccion $proceso, string $email, array $extra = [])
     {
+        // El portal es público (sin usuario): en pruebas el guard JWT y el encabezado Authorization (withHeaders
+        // los acumula) conservarían al usuario del request anterior.
+        $this->olvidarSesionDePersonal();
+        unset($this->defaultHeaders['Authorization']);
+
         return $this->withHeaders(['X-Candidato-Token' => $this->tokenCandidato($email)])
             ->post("/api/publico/empleos/{$proceso->codigo}/postulaciones", $this->datosPostulacion($proceso, $extra), ['Accept' => 'application/json']);
     }

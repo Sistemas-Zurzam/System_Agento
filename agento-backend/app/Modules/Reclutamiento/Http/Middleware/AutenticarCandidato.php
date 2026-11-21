@@ -2,6 +2,7 @@
 
 namespace App\Modules\Reclutamiento\Http\Middleware;
 
+use App\Modules\Configuracion\Support\EmpresaContext;
 use App\Modules\Reclutamiento\Application\AccesoCandidatoService;
 use Closure;
 use Illuminate\Http\Request;
@@ -26,6 +27,15 @@ class AutenticarCandidato
 
         $request->attributes->set('acceso_candidato', $acceso);
 
-        return $next($request);
+        // El candidato se identifica por correo verificado y no pertenece a una empresa: sus
+        // consultas cruzan empresas por diseño y se filtran explícitamente por ese correo.
+        // Al postular, el servicio fija la empresa del proceso (EmpresaContext::como).
+        $previo = EmpresaContext::entrarSistema('sesión de candidato verificado: datos filtrados por su correo');
+
+        try {
+            return $next($request);
+        } finally {
+            EmpresaContext::restaurar($previo);
+        }
     }
 }

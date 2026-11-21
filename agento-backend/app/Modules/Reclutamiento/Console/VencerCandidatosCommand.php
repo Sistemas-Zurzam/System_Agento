@@ -2,6 +2,8 @@
 
 namespace App\Modules\Reclutamiento\Console;
 
+use App\Modules\Configuracion\Models\Empresa;
+use App\Modules\Configuracion\Support\EmpresaContext;
 use App\Modules\Reclutamiento\Application\RetencionCandidatosService;
 use Illuminate\Console\Command;
 
@@ -20,9 +22,11 @@ class VencerCandidatosCommand extends Command
 
     public function handle(RetencionCandidatosService $retencion): int
     {
-        $empresaId = $this->option('empresa') ? (int) $this->option('empresa') : null;
-        $consulta = $retencion->candidatosVencidos($empresaId);
-        $total = (clone $consulta)->count();
+        // Recorrido explícito por empresa: cada una se procesa con su propio contexto.
+        $empresaIds = $this->option('empresa')
+            ? [(int) $this->option('empresa')]
+            : Empresa::query()->pluck('id')->all();
+        $total = array_sum(array_map(fn (int $id) => $retencion->candidatosVencidos($id)->count(), $empresaIds));
         $meses = (int) config('reclutamiento.retencion.meses', 24);
 
         $this->info("Candidaturas vencidas (más de {$meses} meses desde la última postulación): {$total}");
@@ -36,12 +40,16 @@ class VencerCandidatosCommand extends Command
         }
 
         $procesados = 0;
-        $consulta->orderBy('id')->chunkById(100, function ($candidatos) use ($retencion, &$procesados) {
-            foreach ($candidatos as $candidato) {
-                $retencion->anonimizar($candidato);
-                $procesados++;
-            }
-        });
+        foreach ($empresaIds as $empresaId) {
+            EmpresaContext::como($empresaId, function () use ($retencion, $empresaId, &$procesados) {
+                $retencion->candidatosVencidos($empresaId)->orderBy('id')->chunkById(100, function ($candidatos) use ($retencion, &$procesados) {
+                    foreach ($candidatos as $candidato) {
+                        $retencion->anonimizar($candidato);
+                        $procesados++;
+                    }
+                });
+            });
+        }
 
         $this->info("Candidaturas anonimizadas: {$procesados}");
 

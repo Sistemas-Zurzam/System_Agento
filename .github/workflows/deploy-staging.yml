@@ -1,0 +1,66 @@
+name: Deploy staging
+
+# Despliegue automático a STAGING al integrar en la rama `dev`.
+# Requiere el GitHub Environment "staging" (ver docs/runbooks/staging.md).
+on:
+  push:
+    branches: ["dev"]
+    paths:
+      - "agento-backend/**"
+      - "agento-frontend/**"
+      - ".github/workflows/**"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy-staging
+  cancel-in-progress: false
+
+jobs:
+  tests:
+    uses: ./.github/workflows/ci.yml
+
+  deploy:
+    needs: tests
+    # Interruptor de seguridad: sin la variable STAGING_DEPLOY_ENABLED=true el push a `dev` solo ejecuta las
+    # pruebas y NO despliega. Se activa cuando staging está preparado (docs/runbooks/staging.md), porque este
+    # trabajo hereda los secretos SSH del repositorio, que pueden apuntar a otro servidor.
+    if: ${{ vars.STAGING_DEPLOY_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    environment: staging
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          sparse-checkout: .github
+
+      - name: Deploy over SSH
+        uses: appleboy/ssh-action@v1.0.3
+        env:
+          APP_DIR: ${{ vars.APP_DIR || '/var/www/Plataforma-Agento' }}
+          DEPLOY_BRANCH: dev
+          ENTORNO: staging
+          MAINTENANCE_SECRET: ${{ secrets.MAINTENANCE_SECRET }}
+          BACKUP_DIR: ${{ vars.BACKUP_DIR }}
+          BACKUP_RETENTION_DAYS: ${{ vars.BACKUP_RETENTION_DAYS }}
+        with:
+          host: ${{ secrets.SSH_HOST }}
+          username: ${{ secrets.SSH_USERNAME }}
+          key: ${{ secrets.SSH_PRIVATE_KEY }}
+          port: ${{ secrets.SSH_PORT || 22 }}
+          envs: APP_DIR,DEPLOY_BRANCH,ENTORNO,MAINTENANCE_SECRET,BACKUP_DIR,BACKUP_RETENTION_DAYS
+          script_stop: true
+          script: |
+            set -euo pipefail
+            cd "$APP_DIR"
+            git fetch --prune origin "$DEPLOY_BRANCH"
+            git show "origin/$DEPLOY_BRANCH:agento-backend/deploy/scripts/deploy.sh" > /tmp/agento-deploy.sh
+            bash /tmp/agento-deploy.sh
+
+      - name: Smoke test (health check)
+        run: |
+          curl --fail --silent --show-error --location \
+            --retry 6 --retry-delay 5 --retry-all-errors --max-time 20 \
+            --output /dev/null --write-out 'HTTP %{http_code}\n' \
+            "${{ vars.HEALTHCHECK_URL }}"

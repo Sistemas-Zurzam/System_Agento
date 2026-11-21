@@ -2,8 +2,8 @@ import { Input, Progress, Select, Table, Tag } from 'antd';
 import dayjs from 'dayjs';
 import { useMemo, useState } from 'react';
 import EstadoSeccion from '../components/EstadoSeccion';
-import { ESTADOS_PROCESO } from '../constants/seleccion';
-import { useProcesos } from '../hooks/useSeleccion';
+import { ESTADOS_AGENTO, ESTADOS_PROCESO } from '../constants/seleccion';
+import { useEstadosAgento, useProcesos } from '../hooks/useSeleccion';
 
 export function ProgresoPlazas({ cubiertas = 0, total = 0 }) {
   return (
@@ -20,6 +20,12 @@ export default function ProcesosPage({ onAbrirProceso }) {
   const [pagina, setPagina] = useState(1);
   const filtros = useMemo(() => ({ estado, busqueda: busqueda || undefined, page: pagina, per_page: 15 }), [estado, busqueda, pagina]);
   const { datos, cargando, error, recargar } = useProcesos(filtros);
+  const [estadoAgento, setEstadoAgento] = useState();
+  const idsVisibles = useMemo(() => (datos?.data ?? []).map((p) => p.id), [datos]);
+  const estadosAgento = useEstadosAgento(idsVisibles);
+  const enAgento = (id) => estadosAgento.datos?.[id] ?? 'sin_publicar';
+  // El filtro «Estado en Agento» se aplica a la página visible (el estado se consulta por página).
+  const procesosVisibles = (datos?.data ?? []).filter((p) => !estadoAgento || enAgento(p.id) === estadoAgento);
 
   const columnas = [
     { title: 'Código', dataIndex: 'codigo', render: (c) => <span className="font-mono text-xs font-semibold text-agento-blue-bright">{c}</span> },
@@ -46,6 +52,15 @@ export default function ProcesosPage({ onAbrirProceso }) {
         </div>
       ),
     },
+    {
+      title: 'Estado en Agento',
+      render: (_, p) => {
+        const estado = enAgento(p.id);
+        return estado === 'sin_publicar'
+          ? <span className="text-xs text-gray-500">Sin publicar</span>
+          : <Tag color={ESTADOS_AGENTO[estado]?.color}>{ESTADOS_AGENTO[estado]?.label}</Tag>;
+      },
+    },
     { title: 'Fecha requerida', dataIndex: 'fecha_requerida', render: (f) => dayjs(f).format('DD/MM/YYYY') },
   ];
 
@@ -65,13 +80,22 @@ export default function ProcesosPage({ onAbrirProceso }) {
           onChange={(v) => { setPagina(1); setEstado(v); }}
           options={Object.entries(ESTADOS_PROCESO).map(([value, { label }]) => ({ value, label }))}
         />
+        <Select
+          allowClear
+          placeholder="Estado en Agento"
+          className="min-w-44"
+          aria-label="Filtrar por estado en Agento"
+          value={estadoAgento}
+          onChange={setEstadoAgento}
+          options={[{ value: 'sin_publicar', label: 'Sin publicar' }, ...Object.entries(ESTADOS_AGENTO).map(([value, { label }]) => ({ value, label }))]}
+        />
       </div>
       <EstadoSeccion cargando={cargando && !datos} error={error} onReintentar={recargar}>
         <Table
           rowKey="id"
           loading={cargando}
           columns={columnas}
-          dataSource={datos?.data ?? []}
+          dataSource={procesosVisibles}
           scroll={{ x: 900 }}
           locale={{ emptyText: 'Aún no hay procesos. Se crean al aceptar una solicitud.' }}
           onRow={(p) => ({

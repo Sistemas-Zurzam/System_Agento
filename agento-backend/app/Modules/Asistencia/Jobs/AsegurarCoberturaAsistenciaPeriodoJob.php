@@ -6,6 +6,7 @@ use App\Modules\Asistencia\Application\AsegurarCoberturaAsistenciaPeriodo;
 use App\Modules\Asistencia\Models\AsistenciaPeriodo;
 use App\Modules\Asistencia\Services\AsistenciaAuditoriaService;
 use App\Modules\Configuracion\Models\Empresa;
+use App\Modules\Configuracion\Support\EmpresaContext;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Foundation\Bus\Dispatchable;
@@ -33,6 +34,12 @@ class AsegurarCoberturaAsistenciaPeriodoJob implements ShouldQueue
     ) {}
 
     public function handle(AsegurarCoberturaAsistenciaPeriodo $cobertura, AsistenciaAuditoriaService $auditoria): void
+    {
+        // La empresa del job es la del período, no necesariamente la activa de quien lo despachó (administrador global).
+        EmpresaContext::como($this->empresaId, fn () => $this->ejecutar($cobertura, $auditoria));
+    }
+
+    private function ejecutar(AsegurarCoberturaAsistenciaPeriodo $cobertura, AsistenciaAuditoriaService $auditoria): void
     {
         $empresa = Empresa::findOrFail($this->empresaId);
         $periodo = AsistenciaPeriodo::findOrFail($this->periodoId);

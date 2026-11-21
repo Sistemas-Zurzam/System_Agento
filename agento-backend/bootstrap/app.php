@@ -1,7 +1,9 @@
 <?php
 
+use App\Http\Middleware\CabecerasSeguridad;
 use App\Http\Middleware\JwtMiddleware;
 use App\Modules\Auditoria\Http\Middleware\RegistrarAuditoria;
+use App\Modules\Configuracion\Http\Middleware\ContextoSistema;
 use App\Modules\Configuracion\Http\Middleware\EnsureIsEmpresaAdmin;
 use App\Modules\Configuracion\Http\Middleware\EnsurePermission;
 use App\Modules\Configuracion\Http\Middleware\EnsureServicioContratado;
@@ -24,10 +26,12 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
+        $middleware->append(CabecerasSeguridad::class);
         $middleware->api(append: [RegistrarAuditoria::class]);
 
         $middleware->alias([
             'jwt' => JwtMiddleware::class,
+            'contexto.sistema' => ContextoSistema::class,
             'empresa.admin' => EnsureIsEmpresaAdmin::class,
             'permiso' => EnsurePermission::class,
             'servicio' => EnsureServicioContratado::class,

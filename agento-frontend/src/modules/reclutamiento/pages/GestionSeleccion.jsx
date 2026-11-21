@@ -1,11 +1,13 @@
 import { Result } from 'antd';
 import { tiene } from '../constants/seleccion';
+import ArcoPage from './ArcoPage';
 import BancoTalentosPage from './BancoTalentosPage';
 import CandidatosPage from './CandidatosPage';
 import DashboardSeleccion from './DashboardSeleccion';
 import EvaluacionesPage from './EvaluacionesPage';
 import ProcesoDetallePage from './ProcesoDetallePage';
 import ProcesosPage from './ProcesosPage';
+import PublicarAgentoPage from './PublicarAgentoPage';
 import SolicitudesPage from './SolicitudesPage';
 
 /**
@@ -51,6 +53,10 @@ export default function GestionSeleccion({ user, vista, procesoId, navigate }) {
       return permisos.candidatos ? <CandidatosPage user={user} onAbrirProceso={abrirProceso} /> : sinAcceso;
     case 'banco-talentos':
       return permisos.banco ? <BancoTalentosPage user={user} /> : sinAcceso;
+    case 'publicar-agento':
+      return permisos.procesos ? <PublicarAgentoPage user={user} onAbrirProceso={abrirProceso} /> : sinAcceso;
+    case 'arco':
+      return permisos.banco ? <ArcoPage /> : sinAcceso;
     case 'evaluaciones':
       return permisos.evaluaciones ? <EvaluacionesPage user={user} /> : sinAcceso;
     default:

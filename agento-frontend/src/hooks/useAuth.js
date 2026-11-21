@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
 import api from '../services/api';
+import { guardarSesion, limpiarSesion } from '../services/sesion';
 
 export function useAuth() {
   const [loading, setLoading] = useState(false);
@@ -11,7 +12,7 @@ export function useAuth() {
 
     try {
       const { data } = await api.post('/login', { login: identificador, password });
-      localStorage.setItem('access_token', data.access_token);
+      guardarSesion(localStorage, data);
       return true;
     } catch (err) {
       setError(err.response?.data?.message ?? 'No se pudo iniciar sesión');
@@ -25,7 +26,7 @@ export function useAuth() {
     try {
       await api.post('/logout');
     } finally {
-      localStorage.removeItem('access_token');
+      limpiarSesion(localStorage);
     }
   }, []);
 

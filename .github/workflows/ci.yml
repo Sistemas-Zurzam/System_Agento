@@ -1,0 +1,146 @@
+name: CI
+
+# Pruebas del backend. Se ejecutan en cada PR y las reutilizan los workflows de
+# despliegue (staging y producción). No existe ninguna forma de omitirlas: si
+# fallan, el despliegue no empieza.
+#
+# Dos trabajos, ambos obligatorios:
+#   - laravel-tests: suite completa sobre SQLite en memoria (rápido).
+#   - laravel-tests-mysql: la misma suite y las migraciones sobre MySQL, el motor real. SQLite no
+#     detecta límites de MySQL (longitud de identificadores, modo estricto, FK, enum, DDL).
+on:
+  pull_request:
+    branches: ["main", "dev"]
+    paths:
+      - "agento-backend/**"
+      - ".github/workflows/**"
+  workflow_call:
+
+permissions:
+  contents: read
+
+defaults:
+  run:
+    working-directory: agento-backend
+
+jobs:
+  laravel-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+
+      - name: Copy .env
+        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+      - name: Install Dependencies
+        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      - name: Generate key
+        run: php artisan key:generate
+
+      - name: Generate JWT secret
+        run: php artisan jwt:secret --force
+
+      - name: Directory Permissions
+        run: chmod -R 777 storage bootstrap/cache
+
+      - name: Execute tests (Unit and Feature)
+        run: php artisan test
+
+  laravel-tests-mysql:
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+
+    services:
+      mysql:
+        # Debe ser la MISMA versión que producción. Confírmala en el servidor con `SELECT VERSION();`
+        # y fíjala en Settings → Secrets and variables → Actions → Variables → MYSQL_VERSION
+        # (ej. 8.0, 8.4, 5.7). Mientras no exista la variable se usa 8.0.
+        image: mysql:${{ vars.MYSQL_VERSION || '8.0' }}
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: agento_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -uroot -proot --silent"
+          --health-interval=10s
+          --health-timeout=5s
+          --health-retries=15
+
+    # Las variables del entorno del proceso tienen prioridad sobre el .env y sobre las <env> de
+    # phpunit.xml (que son sqlite): la suite corre contra este MySQL.
+    env:
+      DB_CONNECTION: mysql
+      DB_HOST: 127.0.0.1
+      DB_PORT: "3306"
+      DB_DATABASE: agento_test
+      DB_USERNAME: root
+      DB_PASSWORD: root
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # para saber qué migraciones añade el PR respecto a su base
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: "8.3"
+          extensions: mbstring, pdo_mysql
+
+      - name: Copy .env
+        run: php -r "file_exists('.env') || copy('.env.example', '.env');"
+
+      - name: Install Dependencies
+        run: composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
+
+      - name: Generate key
+        run: php artisan key:generate
+
+      - name: Generate JWT secret
+        run: php artisan jwt:secret --force
+
+      - name: Directory Permissions
+        run: chmod -R 777 storage bootstrap/cache
+
+      - name: Versión de MySQL
+        run: php -r "echo (new PDO('mysql:host=127.0.0.1;port=3306;dbname=agento_test','root','root'))->query('select version()')->fetchColumn(), PHP_EOL;"
+
+      - name: Migraciones (up) sobre MySQL vacío
+        run: php artisan migrate --force
+
+      - name: Migraciones nuevas (down y up otra vez)
+        # Revierte las migraciones que añade este PR (o, si no se puede determinar, las dos más
+        # recientes) y las vuelve a aplicar. Falla si alguna no es reversible o no es re-aplicable.
+        run: |
+          set -euo pipefail
+          BASE="${{ github.event.pull_request.base.sha }}"
+          NUEVAS=""
+          if [ -n "$BASE" ] && git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            NUEVAS="$(git diff --name-only --diff-filter=A --relative "$BASE" HEAD -- database/migrations || true)"
+          fi
+          if [ -z "$NUEVAS" ]; then
+            NUEVAS="$(ls database/migrations/*.php | sort | tail -n 2)"
+          fi
+          echo "Migraciones a revertir y re-aplicar:"; echo "$NUEVAS"
+          ARGS=""
+          for f in $NUEVAS; do ARGS="$ARGS --path=$f"; done
+          php artisan migrate:rollback --force $ARGS
+          php artisan migrate --force
+          if php artisan migrate:status | grep -qi "pending"; then
+            echo "Quedaron migraciones pendientes"; exit 1
+          fi
+
+      - name: Execute tests (Unit and Feature) sobre MySQL
+        run: php artisan test
+
+      - name: Reversibilidad total de las migraciones (informativo)
+        # Revierte TODAS las migraciones históricas. No bloquea: sirve para ver cuáles no tienen
+        # down() o fallan al revertirse. Las nuevas sí se exigen reversibles en el paso anterior.
+        continue-on-error: true
+        run: php artisan migrate:reset --force

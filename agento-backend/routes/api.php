@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AuthController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\ReporteCspController;
 use App\Modules\Asistencia\Http\Controllers\AsistenciaController;
 use App\Modules\Auditoria\Http\Controllers\AuditoriaController;
 use App\Modules\Asistencia\Http\Controllers\ControlAccesoController;
@@ -51,13 +52,16 @@ use App\Modules\PortalCliente\Http\Controllers\PortalPlanificacionController;
 use App\Modules\Reclutamiento\Http\Middleware\ExigirAlgunPermiso;
 use Illuminate\Support\Facades\Route;
 
-Route::post('/login', [AuthController::class, 'login']);
+// Reportes de violación de CSP que envían los navegadores (público, siempre 204).
+Route::post('/seguridad/csp-report', ReporteCspController::class)->middleware('throttle:30,1');
+
+Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
 Route::middleware('jwt')->group(function () {
-    Route::get('/me', [AuthController::class, 'me']);
+    Route::get('/me', [AuthController::class, 'me'])->middleware('throttle:auth-me');
     Route::put('/me', [ProfileController::class, 'update']);
     Route::post('/logout', [AuthController::class, 'logout']);
-    Route::post('/refresh', [AuthController::class, 'refresh']);
+    Route::post('/refresh', [AuthController::class, 'refresh'])->middleware('throttle:auth-refresh');
 
     // Auditoría: cualquier usuario autenticado puede reportar sus propios
     // clicks/navegación; la consulta de la bitácora requiere permiso.
@@ -425,3 +429,6 @@ Route::middleware('jwt')->group(function () {
 
 // Selección y Reclutamiento (/api/seleccion y portal público /api/publico).
 require __DIR__.'/seleccion.php';
+
+// Publicación de ofertas en Agento (API pública /api/v1 y pestaña del panel).
+require __DIR__.'/agento.php';

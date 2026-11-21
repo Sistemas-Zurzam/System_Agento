@@ -11,6 +11,10 @@
         <testsuite name="Feature">
             <directory>tests/Feature</directory>
         </testsuite>
+        <!-- Siempre la última: confirma datos (FULLTEXT de MySQL) y no limpia; ver BusquedaFulltextTest -->
+        <testsuite name="MysqlFulltext">
+            <directory>tests/MysqlFulltext</directory>
+        </testsuite>
     </testsuites>
     <source>
         <include>

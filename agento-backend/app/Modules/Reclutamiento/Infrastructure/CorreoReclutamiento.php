@@ -17,13 +17,44 @@ use Throwable;
  */
 class CorreoReclutamiento
 {
-    public function enviar(string $destinatario, string $asunto, string $cuerpo): bool
+    /**
+     * Encola el correo (lo envía el worker de la cola, no el request). Devuelve
+     * true si quedó encolado; el envío efectivo puede fallar y reintentarse
+     * (MensajePlano::$tries). Se usa para los códigos de acceso del portal.
+     */
+    public function encolar(string $destinatario, string $asunto, string $cuerpo): bool
+    {
+        if (! $this->mailerEntregaCorreos()) {
+            return false;
+        }
+
+        try {
+            Mail::to($destinatario)->queue(new MensajePlano($asunto, $cuerpo));
+
+            return true;
+        } catch (Throwable $e) {
+            Log::error('Reclutamiento: error al encolar correo.', ['error' => $e->getMessage()]);
+
+            return false;
+        }
+    }
+
+    private function mailerEntregaCorreos(): bool
     {
         $mailer = (string) config('mail.default');
 
         if (in_array($mailer, ['log', 'array'], true) && ! app()->environment(['local', 'testing'])) {
             Log::warning('Reclutamiento: correo no enviado porque el mailer configurado no entrega correos reales.', ['mailer' => $mailer]);
 
+            return false;
+        }
+
+        return true;
+    }
+
+    public function enviar(string $destinatario, string $asunto, string $cuerpo): bool
+    {
+        if (! $this->mailerEntregaCorreos()) {
             return false;
         }
 

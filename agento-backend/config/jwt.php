@@ -105,7 +105,9 @@ return [
     |
     */
 
-    'ttl' => env('JWT_TTL', 720),
+    // 60 min por defecto: el panel renueva el token antes de que venza (agento-frontend/src/services/sesion.js).
+    // Ojo: si el .env del servidor define JWT_TTL, ese valor manda (ver docs/runbooks/despliegue.md).
+    'ttl' => (int) env('JWT_TTL', 60),
 
     /*
     |--------------------------------------------------------------------------

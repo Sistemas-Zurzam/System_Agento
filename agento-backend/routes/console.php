@@ -8,6 +8,11 @@ use Illuminate\Support\Facades\Schedule;
 // RECLUTAMIENTO_RETENCION_ELIMINAR=true; si no, queda como ejecución de prueba.
 Schedule::command('reclutamiento:cerrar-intentos-vencidos')->everyFiveMinutes()->withoutOverlapping();
 Schedule::command('reclutamiento:vencer-candidatos --ejecutar')->dailyAt('03:00')->withoutOverlapping();
+// Reintenta el escaneo antivirus de documentos pendientes o con error (antivirus caído).
+Schedule::command('reclutamiento:escanear-documentos')->everyTenMinutes()->withoutOverlapping();
+
+// Publicación en Agento: sale lo programado y vence lo cumplido (cada empresa con su contexto).
+Schedule::command('agento:sincronizar-publicaciones')->everyFiveMinutes()->withoutOverlapping();
 
 Artisan::command('inspire', function () {
     $this->comment(Inspiring::quote());
