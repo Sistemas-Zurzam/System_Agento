@@ -432,3 +432,6 @@ require __DIR__.'/seleccion.php';
 
 // Publicación de ofertas en Agento (API pública /api/v1 y pestaña del panel).
 require __DIR__.'/agento.php';
+
+// CRM: conversaciones de WhatsApp Cloud API (webhook público y bandeja del panel).
+require __DIR__.'/crm.php';

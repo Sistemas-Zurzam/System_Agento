@@ -1,6 +1,7 @@
 import {
   BarChartOutlined,
   ClockCircleOutlined,
+  MessageOutlined,
   CustomerServiceOutlined,
   FileDoneOutlined,
   ScanOutlined,
@@ -26,7 +27,7 @@ const { Sider } = Layout;
  * tiene motor de cálculo y UI real (ver GestionRemuneraciones.jsx) — se
  * habilita con el permiso nominas.ver.
  */
-function buildMenuItems(isAdmin, puedeVerHorarios, puedeVerAsistencia, puedeVerNominas, puedeControlAcceso, permisosSeleccion) {
+function buildMenuItems(isAdmin, puedeVerHorarios, puedeVerAsistencia, puedeVerNominas, puedeControlAcceso, permisosSeleccion, permisosCrm) {
   const principal = [];
 
   // El kiosco (`/control-acceso`) es una pantalla aparte, sin sidebar/header
@@ -106,6 +107,17 @@ function buildMenuItems(isAdmin, puedeVerHorarios, puedeVerAsistencia, puedeVerN
     });
   }
 
+  // CRM: bandeja de conversaciones de WhatsApp y configuración de los canales (Meta). El backend
+  // vuelve a validar los permisos crm.*.
+  const crm = [
+    { key: 'crm-conversaciones', label: 'Conversaciones', visible: permisosCrm.conversaciones },
+    { key: 'crm-canales', label: 'Canales de WhatsApp', visible: permisosCrm.canales },
+  ].filter((item) => isAdmin || item.visible).map(({ key, label }) => ({ key, label }));
+
+  if (crm.length > 0) {
+    principal.push({ key: 'crm', icon: <MessageOutlined />, label: 'CRM', children: crm });
+  }
+
   if (isAdmin) {
     principal.push(
       {
@@ -173,7 +185,11 @@ export default function Sidebar({ collapsed, onCollapse, selectedKey, onSelect, 
       banco: p('seleccion.candidatos.gestionar'),
       evaluaciones: p('seleccion.evaluaciones.gestionar'),
     };
-    return buildMenuItems(isAdmin, puedeVerHorarios, puedeVerAsistencia, puedeVerNominas, puedeControlAcceso, permisosSeleccion);
+    const permisosCrm = {
+      conversaciones: p('crm.conversaciones.ver', 'crm.conversaciones.responder'),
+      canales: p('crm.canales.gestionar'),
+    };
+    return buildMenuItems(isAdmin, puedeVerHorarios, puedeVerAsistencia, puedeVerNominas, puedeControlAcceso, permisosSeleccion, permisosCrm);
   }, [isAdmin, puedeVerHorarios, puedeVerAsistencia, puedeVerNominas, puedeControlAcceso, permisos, servicioReclutamiento]);
 
   return (

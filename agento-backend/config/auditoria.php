@@ -16,7 +16,7 @@ return [
     'rutas_excluidas' => ['auditoria/*', 'refresh', 'me'],
 
     // Claves cuyo valor jamás se almacena (comparación por fragmento, sin mayúsculas).
-    'claves_sensibles' => ['password', 'contrasena', 'token', 'secret', 'authorization', 'api_key', 'apikey', 'remember', 'codigo_verificacion', 'otp', 'cvv'],
+    'claves_sensibles' => ['password', 'contrasena', 'token', 'secret', 'authorization', 'api_key', 'apikey', 'remember', 'codigo_verificacion', 'otp', 'cvv', 'texto_mensaje'],
 
     // Tope de tamaño (bytes) del JSON de payload y cantidad de cambios de modelo por request.
     'max_payload_bytes' => 16384,
