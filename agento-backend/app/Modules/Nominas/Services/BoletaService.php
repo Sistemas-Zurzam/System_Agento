@@ -845,6 +845,18 @@ class BoletaService
                 ->where('liquidaciones_cese.estado', '!=', 'anulada'))
             ->whereDate('fecha_ingreso', '<=', $fechaFin)
             ->where(fn ($query) => $query->whereNull('fecha_cese')->orWhereDate('fecha_cese', '>=', $fechaInicio))
+            // Pagados por semana (motorizados de Zazu, lotes de PagoSemanalZazuService):
+            // su remuneración vigente al cierre del período es "semanal". Si
+            // entraran también aquí cobrarían dos veces.
+            ->whereNotExists(fn ($query) => $query->select(DB::raw(1))->from('colaborador_remuneraciones as cr')
+                ->whereColumn('cr.colaborador_id', 'colaboradores.id')
+                ->where('cr.periodicidad_pago', 'semanal')
+                ->whereDate('cr.vigencia_desde', '<=', $fechaFin)
+                ->whereNotExists(fn ($posterior) => $posterior->select(DB::raw(1))->from('colaborador_remuneraciones as cr2')
+                    ->whereColumn('cr2.colaborador_id', 'cr.colaborador_id')
+                    ->whereDate('cr2.vigencia_desde', '<=', $fechaFin)
+                    ->where(fn ($q) => $q->whereColumn('cr2.vigencia_desde', '>', 'cr.vigencia_desde')
+                        ->orWhere(fn ($q2) => $q2->whereColumn('cr2.vigencia_desde', 'cr.vigencia_desde')->whereColumn('cr2.id', '>', 'cr.id')))))
             ->get();
     }
 
