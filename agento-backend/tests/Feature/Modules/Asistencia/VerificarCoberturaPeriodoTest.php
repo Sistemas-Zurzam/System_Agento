@@ -55,6 +55,12 @@ class VerificarCoberturaPeriodoTest extends TestCase
 
         $lunes = Carbon::parse('2026-06-01')->startOfWeek(Carbon::MONDAY);
         $colaborador = $this->crearColaboradorRotativo($empresa, $lunes, 1);
+        // Aislamiento: ColaboradorSeeder deja colaboradores reales en esta empresa sin
+        // marcaciones esa semana (en MySQL generan faltas y el período queda con
+        // pendientes). Se cesan antes de la semana para medir solo al de la prueba.
+        \App\Modules\Personas\Models\Colaborador::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)->where('id', '!=', $colaborador->id)
+            ->update(['fecha_cese' => $lunes->copy()->subDay()->toDateString()]);
 
         // Marca 6 de 7 días -- el lunes queda como único candidato a descanso.
         for ($fecha = $lunes->copy()->addDay(); $fecha->lte($lunes->copy()->addDays(6)); $fecha->addDay()) {

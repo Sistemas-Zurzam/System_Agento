@@ -70,6 +70,14 @@ class CtsExcelHistoricoTest extends TestCase
         return new UploadedFile($ruta, 'CTS NOVIEMBRE 2026.xlsx', 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', null, true);
     }
 
+    /** MySQL reordena las claves de una columna JSON: se compara contenido y tipos, no el orden. */
+    private function assertConceptos(array $esperado, array $actual): void
+    {
+        ksort($esperado);
+        ksort($actual);
+        $this->assertSame($esperado, $actual);
+    }
+
     private function datos(UploadedFile $archivo): array
     {
         return ['archivo' => $archivo, 'tipo' => 'cts_noviembre', 'anio' => 2026];
@@ -99,7 +107,7 @@ class CtsExcelHistoricoTest extends TestCase
         $this->assertSame(578.33, $resumen['total_aprobable']);
         $fila = collect($resumen['colaboradores'])->firstWhere('colaborador_id', $dos->id);
         $this->assertSame(253.33, $fila['importe_aprobable']);
-        $this->assertSame(['SUELDO_BASICO' => 1400, 'PROMEDIO_HORAS_EXTRA' => 90, 'PROMEDIO_COMISIONES' => 30], $fila['conceptos']);
+        $this->assertConceptos(['SUELDO_BASICO' => 1400, 'PROMEDIO_HORAS_EXTRA' => 90, 'PROMEDIO_COMISIONES' => 30], $fila['conceptos']);
         $this->assertSame(120, $fila['dias_computables']);
 
         // No se recalcula por encima de la CTS del Excel.
