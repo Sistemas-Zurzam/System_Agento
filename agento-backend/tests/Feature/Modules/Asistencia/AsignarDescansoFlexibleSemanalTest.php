@@ -50,6 +50,12 @@ class AsignarDescansoFlexibleSemanalTest extends TestCase
             'empresa_id' => $empresa->id, 'colaborador_id' => $colaborador->id, 'horario_id' => $horarioRotativo->id,
             'dias_descanso_rotativo_por_semana' => 2, 'vigencia_desde' => $lunes->copy()->subYear(), 'vigencia_hasta' => null,
         ]);
+        // Aislamiento: ColaboradorSeeder deja colaboradores reales en esta empresa sin
+        // marcaciones esa semana (en MySQL generan faltas y el período queda con
+        // pendientes). Se cesan antes de la semana para medir solo al de la prueba.
+        \App\Modules\Personas\Models\Colaborador::withoutGlobalScopes()
+            ->where('empresa_id', $empresa->id)->where('id', '!=', $colaborador->id)
+            ->update(['fecha_cese' => $lunes->copy()->subDay()->toDateString()]);
 
         // Marca 2 fichadas (entrada/salida) en martes, miércoles, jueves y
         // domingo -- lunes, viernes y sábado quedan deliberadamente sin

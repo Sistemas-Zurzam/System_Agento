@@ -48,6 +48,10 @@ return [
         // — viaja en la cabecera X-Api-Key (mismo esquema que ya usan los
         // demás webhooks entrantes de plataforma_zazu).
         'webhook_secret' => env('ZAZU_WEBHOOK_SECRET'),
+        // Aviso de estado de los pagos semanales de motorizados (recibido,
+        // observado, aprobado, pagado) — ver NotificarEstadoPagoSemanalZazuJob.
+        // Ej. https://zazu.example.com/api/webhook/agento/planilla-estado
+        'planilla_webhook_url' => env('ZAZU_PLANILLA_WEBHOOK_URL'),
     ],
 
 ];

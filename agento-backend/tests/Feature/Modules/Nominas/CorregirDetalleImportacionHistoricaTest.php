@@ -79,7 +79,11 @@ class CorregirDetalleImportacionHistoricaTest extends TestCase
             // esperado
         }
 
-        $this->assertSame($originalPrevio, $detalle->fresh()->datos_originales);
+        // MySQL reordena las claves de una columna JSON: se compara el contenido, no el orden.
+        $actual = $detalle->fresh()->datos_originales;
+        ksort($originalPrevio);
+        ksort($actual);
+        $this->assertSame($originalPrevio, $actual);
     }
 
     public function test_corregir_colaborador_id_recalcula_clasificacion_y_deja_auditoria(): void

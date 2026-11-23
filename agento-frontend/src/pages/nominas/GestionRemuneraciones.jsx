@@ -50,6 +50,7 @@ import ResumenContableModal from '../../modules/remuneraciones/components/Resume
 import ReporteComisionesHeModal from '../../modules/remuneraciones/components/ReporteComisionesHeModal';
 import EnviarBoletasCorreoModal from '../../modules/remuneraciones/components/EnviarBoletasCorreoModal';
 import TelecreditoBcpModal from '../../modules/remuneraciones/components/TelecreditoBcpModal';
+import PagosSemanalesZazuTab from '../../modules/remuneraciones/components/PagosSemanalesZazuTab';
 import { useRemuneraciones } from '../../modules/remuneraciones/hooks/useRemuneraciones';
 import { colorForName, initialsForName } from '../../utils/avatarColor';
 
@@ -1311,6 +1312,18 @@ export default function GestionRemuneraciones({ user, onUserRefresh }) {
               <Empty description="Selecciona o crea un ciclo remunerativo para comenzar" className="mt-8" />
             ),
           }] : []),
+          {
+            key: 'pagos-semanales-zazu',
+            label: 'Pagos semanales (Zazu)',
+            children: (
+              <PagosSemanalesZazuTab
+                puedeAprobar={puedeAprobar}
+                puedePagar={puedePagar}
+                puedeCalcular={puedeCalcular}
+                puedeExportarBbva={puedeExportarBbvaNetCash}
+              />
+            ),
+          },
           {
             key: 'cts-gratificaciones',
             label: 'CTS y gratificaciones',

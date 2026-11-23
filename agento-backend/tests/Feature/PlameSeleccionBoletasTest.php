@@ -19,8 +19,10 @@ class PlameSeleccionBoletasTest extends TestCase
     {
         $this->seed(DatabaseSeeder::class);
         $empresa = Empresa::firstOrFail();
-        $primero = $this->crearColaborador($empresa, ['numero_documento' => '70000001']);
-        $segundo = $this->crearColaborador($empresa, ['numero_documento' => '70000002']);
+        // Fuera del rango que siembra ColaboradorSeeder (70000001 en adelante): en
+        // MySQL el índice único empresa+documento rechazaba el duplicado.
+        $primero = $this->crearColaborador($empresa, ['numero_documento' => '91000001']);
+        $segundo = $this->crearColaborador($empresa, ['numero_documento' => '91000002']);
         $ciclo = CicloRemunerativo::create([
             'empresa_id' => $empresa->id, 'nombre' => 'Agosto 2026',
             'fecha_inicio' => '2026-08-01', 'fecha_fin' => '2026-08-31',

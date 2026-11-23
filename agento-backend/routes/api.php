@@ -32,6 +32,8 @@ use App\Modules\Nominas\Http\Controllers\ConsumoComidaController;
 use App\Modules\Nominas\Http\Controllers\HorasExtraMontoController;
 use App\Modules\Nominas\Http\Controllers\LiquidacionCeseController;
 use App\Modules\Nominas\Http\Controllers\NominaImportacionHistoricaController;
+use App\Modules\Nominas\Http\Controllers\PagoSemanalZazuController;
+use App\Modules\Nominas\Http\Controllers\PagoSemanalZazuIntegracionController;
 use App\Modules\Nominas\Http\Controllers\PlanillaComplementariaController;
 use App\Modules\Nominas\Http\Controllers\PropuestaConceptoController;
 use App\Modules\Nominas\Http\Controllers\SunatCatalogoController;
@@ -54,6 +56,10 @@ use Illuminate\Support\Facades\Route;
 
 // Reportes de violación de CSP que envían los navegadores (público, siempre 204).
 Route::post('/seguridad/csp-report', ReporteCspController::class)->middleware('throttle:30,1');
+
+// Integración máquina a máquina (sin JWT): plataforma_zazu envía la semana de
+// pago de sus motorizados. Se autentica con X-Api-Key en el controlador.
+Route::post('/integraciones/zazu/pagos-semanales', [PagoSemanalZazuIntegracionController::class, 'store'])->middleware('throttle:30,1');
 
 Route::post('/login', [AuthController::class, 'login'])->middleware('throttle:login');
 
@@ -381,6 +387,17 @@ Route::middleware('jwt')->group(function () {
     Route::post('/planillas-complementarias/{complementaria}/bbva-netcash/exportar', [PlanillaComplementariaController::class, 'exportarBbva'])->middleware('permiso:nominas.bbva_netcash_exportar');
     Route::post('/ciclos-remunerativos/{ciclo}/complementarias/telecredito-bcp/exportar-masivo', [PlanillaComplementariaController::class, 'exportarBcpMasivo'])->middleware('permiso:nominas.telecredito_exportar');
     Route::post('/ciclos-remunerativos/{ciclo}/complementarias/bbva-netcash/exportar-masivo', [PlanillaComplementariaController::class, 'exportarBbvaMasivo'])->middleware('permiso:nominas.bbva_netcash_exportar');
+
+    // Pagos semanales de motorizados enviados por Zazu (lote aparte del ciclo
+    // mensual). Ver PagoSemanalZazuService.
+    Route::get('/pagos-semanales', [PagoSemanalZazuController::class, 'index'])->middleware('permiso:nominas.ver');
+    Route::get('/pagos-semanales/{lote}', [PagoSemanalZazuController::class, 'show'])->middleware('permiso:nominas.ver');
+    Route::post('/pagos-semanales/{lote}/revalidar', [PagoSemanalZazuController::class, 'revalidar'])->middleware('permiso:nominas.calcular');
+    Route::post('/pagos-semanales/{lote}/observar', [PagoSemanalZazuController::class, 'observar'])->middleware('permiso:nominas.aprobar');
+    Route::post('/pagos-semanales/{lote}/aprobar', [PagoSemanalZazuController::class, 'aprobar'])->middleware('permiso:nominas.aprobar');
+    Route::post('/pagos-semanales/{lote}/anular', [PagoSemanalZazuController::class, 'anular'])->middleware('permiso:nominas.aprobar');
+    Route::post('/pagos-semanales/{lote}/pagar', [PagoSemanalZazuController::class, 'pagar'])->middleware('permiso:nominas.pagar');
+    Route::post('/pagos-semanales/{lote}/bbva-netcash/exportar', [PagoSemanalZazuController::class, 'exportarBbva'])->middleware('permiso:nominas.bbva_netcash_exportar');
 
     // Bono de Asistencia (política Livex, personal comercial) — se calcula y
     // aplica DENTRO del ciclo normal de planilla, ANTES de pagarlo. Nunca es
