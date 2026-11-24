@@ -9,6 +9,7 @@ use App\Modules\Personas\Models\Colaborador;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use PhpOffice\PhpSpreadsheet\Cell\DataType;
+use PhpOffice\PhpSpreadsheet\Cell\Coordinate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
@@ -28,6 +29,35 @@ final class ReporteColaboradoresExcelExporter
      */
     public static function generar(Empresa $empresa, string $fechaDesde, string $fechaHasta, Collection $colaboradores, array $tipos = ['global']): string
     {
+        $libro = new Spreadsheet;
+        $desde = Carbon::parse($fechaDesde)->startOfMonth();
+        $hasta = Carbon::parse($fechaHasta);
+        for ($mes = $desde->copy(), $indice = 0; $mes->lte($hasta); $mes->addMonth(), $indice++) {
+            $inicio = $mes->greaterThan(Carbon::parse($fechaDesde)) ? $mes->toDateString() : $fechaDesde;
+            $fin = $mes->copy()->endOfMonth()->lessThan($hasta) ? $mes->copy()->endOfMonth()->toDateString() : $fechaHasta;
+            $hoja = $indice === 0 ? $libro->getActiveSheet() : $libro->createSheet();
+            self::agregarHoja($hoja, $empresa, $inicio, $fin, $colaboradores, $tipos);
+            $hoja->setTitle($mes->format('Y-m'));
+        }
+
+        $flujo = fopen('php://temp', 'w+b');
+        $precisionOriginal = ini_get('precision');
+        ini_set('precision', 10);
+        try {
+            (new Xlsx($libro))->save($flujo);
+        } finally {
+            ini_set('precision', $precisionOriginal);
+        }
+        rewind($flujo);
+        $contenido = stream_get_contents($flujo);
+        fclose($flujo);
+        $libro->disconnectWorksheets();
+
+        return $contenido === false ? '' : $contenido;
+    }
+
+    private static function agregarHoja($hoja, Empresa $empresa, string $fechaDesde, string $fechaHasta, Collection $colaboradores, array $tipos): void
+    {
         $titulos = [
             'global' => 'Resumen asistencia', 'inasistencias' => 'Inasistencias',
             'faltas' => 'Faltas', 'tardanzas' => 'Tardanzas',
@@ -36,9 +66,6 @@ final class ReporteColaboradoresExcelExporter
         ];
         $tipos = in_array('global', $tipos, true) ? ['global'] : $tipos;
         $tipo = count($tipos) === 1 ? $tipos[0] : 'personalizado';
-        $libro = new Spreadsheet;
-        $hoja = $libro->getActiveSheet();
-        $hoja->setTitle($titulos[$tipo] ?? 'Personalizado');
 
         $hoja->fromArray([
             'Empresa', $empresa->nombre_comercial,
@@ -54,6 +81,9 @@ final class ReporteColaboradoresExcelExporter
         ];
         $hoja->fromArray($encabezados, null, 'A3');
         $hoja->setCellValueExplicit('N3', '= Total días', DataType::TYPE_STRING);
+        if ($tipos !== ['global'] && in_array('marcaciones_incompletas', $tipos, true)) {
+            $hoja->setCellValue('S3', 'Marcaciones incompletas');
+        }
 
         // Todo como fechas calendario en el mismo timezone, para que
         // diffInDays no reciba horas sueltas por la diferencia con Lima.
@@ -63,8 +93,9 @@ final class ReporteColaboradoresExcelExporter
 
         $fila = 4;
         foreach ($colaboradores as $colaborador) {
-            $resultados = $colaborador->resultadosAsistencia;
-            $horasExtra = $colaborador->horasExtraAsistencia;
+            $resultados = $colaborador->resultadosAsistencia->filter(fn (AsistenciaResultadoDiario $r) => $r->fecha->toDateString() >= $fechaDesde && $r->fecha->toDateString() <= $fechaHasta);
+            $horasExtra = $colaborador->horasExtraAsistencia->filter(fn ($h) => $h->fecha->toDateString() >= $fechaDesde && $h->fecha->toDateString() <= $fechaHasta);
+            $incidencias = $colaborador->incidenciasAsistencia->filter(fn ($i) => $i->fecha->toDateString() >= $fechaDesde && $i->fecha->toDateString() <= $fechaHasta);
 
             // Cada día cae en una sola columna, según su estado real (no el
             // tipo de día planificado): trabajar en un descanso cuenta como
@@ -85,7 +116,7 @@ final class ReporteColaboradoresExcelExporter
                 'tardanzas' => $trabajados->where('minutos_tardanza', '>', 0)->isNotEmpty(),
                 'marcaciones_incompletas' => $resultados->where('estado', 'marcacion_incompleta')->isNotEmpty(),
                 'permisos' => $justificados > 0,
-                'incidencias' => $colaborador->incidenciasAsistencia->isNotEmpty(),
+                'incidencias' => $incidencias->isNotEmpty(),
                 default => true,
             });
             if (! $coincide) {
@@ -111,9 +142,12 @@ final class ReporteColaboradoresExcelExporter
             // Fórmula visible: el total se puede auditar en el propio Excel.
             $hoja->setCellValue("N{$fila}", "=SUM(F{$fila}:M{$fila})");
             $hoja->setCellValue("O{$fila}", $trabajados->where('minutos_tardanza', '>', 0)->count());
-            $hoja->setCellValue("P{$fila}", $colaborador->incidenciasAsistencia->count());
+            $hoja->setCellValue("P{$fila}", $incidencias->count());
             $hoja->setCellValue("Q{$fila}", self::formatearDuracion($minutosAprobados));
             $hoja->setCellValue("R{$fila}", self::formatearDuracion($minutosPendientes));
+            if ($tipos !== ['global'] && in_array('marcaciones_incompletas', $tipos, true)) {
+                $hoja->setCellValue("S{$fila}", $resultados->where('estado', 'marcacion_incompleta')->count());
+            }
             $fila++;
         }
 
@@ -122,7 +156,8 @@ final class ReporteColaboradoresExcelExporter
             'font' => ['bold' => true],
         ]);
         $hoja->getStyle('A2')->getFont()->setItalic(true)->getColor()->setARGB('FF555555');
-        $hoja->getStyle('A3:R3')->applyFromArray([
+        $ultimaColumnaEncabezado = $tipos !== ['global'] && in_array('marcaciones_incompletas', $tipos, true) ? 'S' : 'R';
+        $hoja->getStyle("A3:{$ultimaColumnaEncabezado}3")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$azul]],
             'alignment' => ['vertical' => Alignment::VERTICAL_CENTER, 'wrapText' => true],
@@ -153,20 +188,26 @@ final class ReporteColaboradoresExcelExporter
 
         $hoja->getHeaderFooter()->setOddHeader('&L'.$empresa->nombre_comercial.'&R'."{$fechaDesde} a {$fechaHasta}");
 
-        $flujo = fopen('php://temp', 'w+b');
-        $precisionOriginal = ini_get('precision');
-        ini_set('precision', 10);
-        try {
-            (new Xlsx($libro))->save($flujo);
-        } finally {
-            ini_set('precision', $precisionOriginal);
+        if ($tipos !== ['global']) {
+            $columnasConcepto = [
+                'inasistencias' => ['G', 'H', 'M'], 'faltas' => ['G'],
+                'tardanzas' => ['O'], 'marcaciones_incompletas' => ['S'],
+                'permisos' => ['I'], 'incidencias' => ['P'],
+            ];
+            $conservar = ['A', 'B', 'C', 'D', 'E'];
+            foreach ($tipos as $concepto) {
+                array_push($conservar, ...($columnasConcepto[$concepto] ?? []));
+            }
+            for ($indice = 19; $indice >= 6; $indice--) {
+                $columna = Coordinate::stringFromColumnIndex($indice);
+                if (! in_array($columna, $conservar, true)) {
+                    $hoja->removeColumn($columna);
+                }
+            }
+            $ultimaColumna = Coordinate::stringFromColumnIndex(count(array_unique($conservar)));
+            $hoja->setAutoFilter("A3:{$ultimaColumna}{$ultimaFila}");
+            $hoja->setCellValue('A2', 'Conceptos: '.implode(', ', $tipos).'. Solo colaboradores con registros de alguno de estos conceptos en este mes.');
         }
-        rewind($flujo);
-        $contenido = stream_get_contents($flujo);
-        fclose($flujo);
-        $libro->disconnectWorksheets();
-
-        return $contenido === false ? '' : $contenido;
     }
 
     /**

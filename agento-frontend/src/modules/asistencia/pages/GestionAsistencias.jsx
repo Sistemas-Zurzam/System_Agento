@@ -1648,7 +1648,7 @@ export default function GestionAsistencias({ user, onUserRefresh, colaboradorId,
           { value: 'permisos', label: 'Permisos y faltas justificadas' },
           { value: 'incidencias', label: 'Incidencias pendientes' },
         ]} />
-        <Text type="secondary">Período: {rango[0].format('DD/MM/YYYY')} al {rango[1].format('DD/MM/YYYY')}. {colaboradoresSeleccionados.length > 0 ? `${colaboradoresSeleccionados.length} colaboradores seleccionados.` : 'Todos los colaboradores según los filtros actuales.'}</Text>
+        <Text type="secondary">Período: {rango[0].format('DD/MM/YYYY')} al {rango[1].format('DD/MM/YYYY')}. El Excel tendrá una hoja por mes y solo las columnas de los conceptos elegidos. {colaboradoresSeleccionados.length > 0 ? `${colaboradoresSeleccionados.length} colaboradores seleccionados.` : 'Todos los colaboradores según los filtros actuales.'}</Text>
       </div>
     </Modal>
     <Modal title="Nuevo permiso" open={permisoModalOpen} onCancel={() => setPermisoModalOpen(false)} footer={null} destroyOnHidden width={520}>
