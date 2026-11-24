@@ -26,7 +26,7 @@ final class ReporteColaboradoresExcelExporter
     /**
      * @param  Collection<int, Colaborador>  $colaboradores
      */
-    public static function generar(Empresa $empresa, string $fechaDesde, string $fechaHasta, Collection $colaboradores, string $tipo = 'global'): string
+    public static function generar(Empresa $empresa, string $fechaDesde, string $fechaHasta, Collection $colaboradores, array $tipos = ['global']): string
     {
         $titulos = [
             'global' => 'Resumen asistencia', 'inasistencias' => 'Inasistencias',
@@ -34,9 +34,11 @@ final class ReporteColaboradoresExcelExporter
             'marcaciones_incompletas' => 'Marc. incompletas',
             'permisos' => 'Permisos', 'incidencias' => 'Incidencias',
         ];
+        $tipos = in_array('global', $tipos, true) ? ['global'] : $tipos;
+        $tipo = count($tipos) === 1 ? $tipos[0] : 'personalizado';
         $libro = new Spreadsheet;
         $hoja = $libro->getActiveSheet();
-        $hoja->setTitle($titulos[$tipo] ?? $titulos['global']);
+        $hoja->setTitle($titulos[$tipo] ?? 'Personalizado');
 
         $hoja->fromArray([
             'Empresa', $empresa->nombre_comercial,
@@ -77,7 +79,7 @@ final class ReporteColaboradoresExcelExporter
             [$sinRegistro, $sinRegistroEnRevision] = self::diasSinRegistro($colaborador, $inicioPeriodo, $finPeriodo, $resultados);
             $enRevision += $sinRegistroEnRevision;
 
-            $coincide = match ($tipo) {
+            $coincide = collect($tipos)->contains(fn (string $concepto) => match ($concepto) {
                 'inasistencias' => $faltas + $enRevision + $sinRegistro > 0,
                 'faltas' => $faltas > 0,
                 'tardanzas' => $trabajados->where('minutos_tardanza', '>', 0)->isNotEmpty(),
@@ -85,7 +87,7 @@ final class ReporteColaboradoresExcelExporter
                 'permisos' => $justificados > 0,
                 'incidencias' => $colaborador->incidenciasAsistencia->isNotEmpty(),
                 default => true,
-            };
+            });
             if (! $coincide) {
                 continue;
             }

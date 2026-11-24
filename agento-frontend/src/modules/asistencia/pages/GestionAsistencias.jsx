@@ -467,7 +467,7 @@ export default function GestionAsistencias({ user, onUserRefresh, colaboradorId,
   const [reprocesando, setReprocesando] = useState(false);
   const [exportandoReporte, setExportandoReporte] = useState(false);
   const [reporteModalOpen, setReporteModalOpen] = useState(false);
-  const [tipoReporte, setTipoReporte] = useState('global');
+  const [tiposReporte, setTiposReporte] = useState(['global']);
   const [exportandoHorasExtra, setExportandoHorasExtra] = useState(false);
   const [reprocesandoDia, setReprocesandoDia] = useState(false);
   const [corrigiendoDia, setCorrigiendoDia] = useState(false);
@@ -724,9 +724,9 @@ export default function GestionAsistencias({ user, onUserRefresh, colaboradorId,
   const exportarReporte = async () => {
     setExportandoReporte(true);
     try {
-      const params = { ...parametros, tipo_reporte: tipoReporte };
+      const params = { ...parametros, tipos_reporte: tiposReporte };
       if (colaboradoresSeleccionados.length > 0) params.colaborador_ids = colaboradoresSeleccionados;
-      await descargarExcel('/asistencia/reporte-colaboradores/excel', params, `Asistencia_${tipoReporte}.xlsx`);
+      await descargarExcel('/asistencia/reporte-colaboradores/excel', params, `Asistencia_${tiposReporte.length === 1 ? tiposReporte[0] : 'personalizado'}.xlsx`);
       message.success('Reporte generado correctamente');
       setReporteModalOpen(false);
     } catch (error) {
@@ -1633,10 +1633,13 @@ export default function GestionAsistencias({ user, onUserRefresh, colaboradorId,
   </>;
 
   return <div className="space-y-4"><div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-end"><div><Title level={3} className="!mb-1">Gestión de asistencias</Title><Text type="secondary">Control diario de {user?.empresa?.nombre_comercial ?? 'la empresa activa'}</Text></div><Space wrap><RangePicker value={rango} allowClear={false} format="DD/MM/YYYY" onChange={(value) => value && setRango(value)} />{activeTab !== 'horas-extra' && <Button icon={<FileExcelOutlined />} onClick={() => setReporteModalOpen(true)}>{colaboradoresSeleccionados.length > 0 ? `Descargar reporte (${colaboradoresSeleccionados.length})` : 'Descargar reporte'}</Button>}{puedeProcesar && <ReprocesarDropdown onReprocesar={confirmarReproceso} reprocesando={reprocesando} puedeRestablecer={puedeRestablecer} />}</Space></div><Tabs activeKey={activeTab} onChange={setActiveTab} items={tabs} />
-    <Modal title="Descargar reporte de asistencias" open={reporteModalOpen} onCancel={() => setReporteModalOpen(false)} onOk={exportarReporte} okText="Descargar Excel" okButtonProps={{ loading: exportandoReporte }}>
+    <Modal title="Descargar reporte de asistencias" open={reporteModalOpen} onCancel={() => setReporteModalOpen(false)} onOk={exportarReporte} okText="Descargar Excel" okButtonProps={{ loading: exportandoReporte || tiposReporte.length === 0 }}>
       <div className="space-y-3">
-        <Text>Tipo de reporte</Text>
-        <Select className="w-full" value={tipoReporte} onChange={setTipoReporte} options={[
+        <Text>Conceptos del reporte</Text>
+        <Select mode="multiple" className="w-full" value={tiposReporte} onChange={(valores) => {
+          if (valores.at(-1) === 'global') setTiposReporte(['global']);
+          else setTiposReporte(valores.filter((valor) => valor !== 'global'));
+        }} placeholder="Selecciona uno o más conceptos" options={[
           { value: 'global', label: 'Global' },
           { value: 'inasistencias', label: 'Inasistencias (faltas y días sin registro)' },
           { value: 'faltas', label: 'Faltas' },
