@@ -38,9 +38,13 @@ class CanalWhatsapp extends Model
         return Str::random(40);
     }
 
+    /**
+     * Se arma con APP_URL y no con la petición actual: detrás de Apache/proxy la petición puede llegar
+     * como http y Meta exige https (no sigue la redirección al verificar el webhook).
+     */
     public function urlWebhook(): string
     {
-        return url('/api/publico/crm/whatsapp/'.$this->webhook_token);
+        return rtrim((string) config('app.url'), '/').'/api/publico/crm/whatsapp/'.$this->webhook_token;
     }
 
     public function conversaciones(): HasMany
