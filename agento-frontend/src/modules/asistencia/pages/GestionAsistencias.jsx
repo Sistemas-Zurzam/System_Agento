@@ -466,6 +466,8 @@ export default function GestionAsistencias({ user, onUserRefresh, colaboradorId,
   const [loading, setLoading] = useState(false);
   const [reprocesando, setReprocesando] = useState(false);
   const [exportandoReporte, setExportandoReporte] = useState(false);
+  const [reporteModalOpen, setReporteModalOpen] = useState(false);
+  const [tipoReporte, setTipoReporte] = useState('global');
   const [exportandoHorasExtra, setExportandoHorasExtra] = useState(false);
   const [reprocesandoDia, setReprocesandoDia] = useState(false);
   const [corrigiendoDia, setCorrigiendoDia] = useState(false);
@@ -722,10 +724,18 @@ export default function GestionAsistencias({ user, onUserRefresh, colaboradorId,
   const exportarReporte = async () => {
     setExportandoReporte(true);
     try {
-      const params = colaboradoresSeleccionados.length > 0 ? { ...parametros, colaborador_ids: colaboradoresSeleccionados } : parametros;
-      await descargarExcel('/asistencia/reporte-colaboradores/excel', params, 'Resumen_asistencia.xlsx');
+      const params = { ...parametros, tipo_reporte: tipoReporte };
+      if (colaboradoresSeleccionados.length > 0) params.colaborador_ids = colaboradoresSeleccionados;
+      await descargarExcel('/asistencia/reporte-colaboradores/excel', params, `Asistencia_${tipoReporte}.xlsx`);
       message.success('Reporte generado correctamente');
-    } catch (error) { message.error(error.response?.data?.message ?? 'No se pudo generar el reporte'); }
+      setReporteModalOpen(false);
+    } catch (error) {
+      let detalle = error.response?.data?.message;
+      if (error.response?.data instanceof Blob) {
+        try { detalle = JSON.parse(await error.response.data.text()).message; } catch { /* La respuesta no es JSON. */ }
+      }
+      message.error(detalle ?? 'No se pudo generar el reporte');
+    }
     finally { setExportandoReporte(false); }
   };
 
@@ -1622,7 +1632,22 @@ export default function GestionAsistencias({ user, onUserRefresh, colaboradorId,
     />
   </>;
 
-  return <div className="space-y-4"><div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-end"><div><Title level={3} className="!mb-1">Gestión de asistencias</Title><Text type="secondary">Control diario de {user?.empresa?.nombre_comercial ?? 'la empresa activa'}</Text></div><Space wrap><RangePicker value={rango} allowClear={false} format="DD/MM/YYYY" onChange={(value) => value && setRango(value)} />{activeTab !== 'horas-extra' && <Button icon={<FileExcelOutlined />} loading={exportandoReporte} onClick={exportarReporte}>{colaboradoresSeleccionados.length > 0 ? `Descargar reporte (${colaboradoresSeleccionados.length})` : 'Descargar reporte'}</Button>}{puedeProcesar && <ReprocesarDropdown onReprocesar={confirmarReproceso} reprocesando={reprocesando} puedeRestablecer={puedeRestablecer} />}</Space></div><Tabs activeKey={activeTab} onChange={setActiveTab} items={tabs} />
+  return <div className="space-y-4"><div className="flex flex-col justify-between gap-3 lg:flex-row lg:items-end"><div><Title level={3} className="!mb-1">Gestión de asistencias</Title><Text type="secondary">Control diario de {user?.empresa?.nombre_comercial ?? 'la empresa activa'}</Text></div><Space wrap><RangePicker value={rango} allowClear={false} format="DD/MM/YYYY" onChange={(value) => value && setRango(value)} />{activeTab !== 'horas-extra' && <Button icon={<FileExcelOutlined />} onClick={() => setReporteModalOpen(true)}>{colaboradoresSeleccionados.length > 0 ? `Descargar reporte (${colaboradoresSeleccionados.length})` : 'Descargar reporte'}</Button>}{puedeProcesar && <ReprocesarDropdown onReprocesar={confirmarReproceso} reprocesando={reprocesando} puedeRestablecer={puedeRestablecer} />}</Space></div><Tabs activeKey={activeTab} onChange={setActiveTab} items={tabs} />
+    <Modal title="Descargar reporte de asistencias" open={reporteModalOpen} onCancel={() => setReporteModalOpen(false)} onOk={exportarReporte} okText="Descargar Excel" okButtonProps={{ loading: exportandoReporte }}>
+      <div className="space-y-3">
+        <Text>Tipo de reporte</Text>
+        <Select className="w-full" value={tipoReporte} onChange={setTipoReporte} options={[
+          { value: 'global', label: 'Global' },
+          { value: 'inasistencias', label: 'Inasistencias (faltas y días sin registro)' },
+          { value: 'faltas', label: 'Faltas' },
+          { value: 'tardanzas', label: 'Tardanzas' },
+          { value: 'marcaciones_incompletas', label: 'Marcaciones incompletas' },
+          { value: 'permisos', label: 'Permisos y faltas justificadas' },
+          { value: 'incidencias', label: 'Incidencias pendientes' },
+        ]} />
+        <Text type="secondary">Período: {rango[0].format('DD/MM/YYYY')} al {rango[1].format('DD/MM/YYYY')}. {colaboradoresSeleccionados.length > 0 ? `${colaboradoresSeleccionados.length} colaboradores seleccionados.` : 'Todos los colaboradores según los filtros actuales.'}</Text>
+      </div>
+    </Modal>
     <Modal title="Nuevo permiso" open={permisoModalOpen} onCancel={() => setPermisoModalOpen(false)} footer={null} destroyOnHidden width={520}>
       <Form form={permisoForm} layout="vertical" onFinish={crearPermiso} initialValues={{ tipo: 'personal' }} requiredMark="optional">
         <Form.Item name="colaborador_id" label="Empleado" rules={[{ required: true, message: 'Selecciona un empleado' }]}><Select showSearch optionFilterProp="label" placeholder="Seleccionar empleado" options={colaboradores.map((item) => ({ value: item.id, label: `${item.nombre_completo} · ${item.legajo}` }))} /></Form.Item>

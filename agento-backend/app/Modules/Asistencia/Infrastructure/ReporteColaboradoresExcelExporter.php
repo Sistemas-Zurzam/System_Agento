@@ -26,11 +26,17 @@ final class ReporteColaboradoresExcelExporter
     /**
      * @param  Collection<int, Colaborador>  $colaboradores
      */
-    public static function generar(Empresa $empresa, string $fechaDesde, string $fechaHasta, Collection $colaboradores): string
+    public static function generar(Empresa $empresa, string $fechaDesde, string $fechaHasta, Collection $colaboradores, string $tipo = 'global'): string
     {
+        $titulos = [
+            'global' => 'Resumen asistencia', 'inasistencias' => 'Inasistencias',
+            'faltas' => 'Faltas', 'tardanzas' => 'Tardanzas',
+            'marcaciones_incompletas' => 'Marc. incompletas',
+            'permisos' => 'Permisos', 'incidencias' => 'Incidencias',
+        ];
         $libro = new Spreadsheet;
         $hoja = $libro->getActiveSheet();
-        $hoja->setTitle('Resumen asistencia');
+        $hoja->setTitle($titulos[$tipo] ?? $titulos['global']);
 
         $hoja->fromArray([
             'Empresa', $empresa->nombre_comercial,
@@ -45,6 +51,7 @@ final class ReporteColaboradoresExcelExporter
             'De los trabajados: con tardanza', 'Incidencias pendientes', 'Horas extra aprobadas', 'Horas extra pendientes de aprobación',
         ];
         $hoja->fromArray($encabezados, null, 'A3');
+        $hoja->setCellValueExplicit('N3', '= Total días', DataType::TYPE_STRING);
 
         // Todo como fechas calendario en el mismo timezone, para que
         // diffInDays no reciba horas sueltas por la diferencia con Lima.
@@ -52,8 +59,8 @@ final class ReporteColaboradoresExcelExporter
         $inicioPeriodo = Carbon::parse($fechaDesde)->startOfDay();
         $finPeriodo = Carbon::parse($fechaHasta)->startOfDay()->min($hoy);
 
-        foreach ($colaboradores as $indice => $colaborador) {
-            $fila = $indice + 4;
+        $fila = 4;
+        foreach ($colaboradores as $colaborador) {
             $resultados = $colaborador->resultadosAsistencia;
             $horasExtra = $colaborador->horasExtraAsistencia;
 
@@ -69,6 +76,19 @@ final class ReporteColaboradoresExcelExporter
             $sinClasificar = $resultados->count() - $trabajados->count() - $faltas - $enRevision - $justificados - $descansos - $remoto;
             [$sinRegistro, $sinRegistroEnRevision] = self::diasSinRegistro($colaborador, $inicioPeriodo, $finPeriodo, $resultados);
             $enRevision += $sinRegistroEnRevision;
+
+            $coincide = match ($tipo) {
+                'inasistencias' => $faltas + $enRevision + $sinRegistro > 0,
+                'faltas' => $faltas > 0,
+                'tardanzas' => $trabajados->where('minutos_tardanza', '>', 0)->isNotEmpty(),
+                'marcaciones_incompletas' => $resultados->where('estado', 'marcacion_incompleta')->isNotEmpty(),
+                'permisos' => $justificados > 0,
+                'incidencias' => $colaborador->incidenciasAsistencia->isNotEmpty(),
+                default => true,
+            };
+            if (! $coincide) {
+                continue;
+            }
 
             $minutosAprobados = $horasExtra->where('estado', 'aprobado')->sum('minutos_aprobados');
             $minutosPendientes = $horasExtra->where('estado', 'pendiente')->sum('minutos_observados');
@@ -92,6 +112,7 @@ final class ReporteColaboradoresExcelExporter
             $hoja->setCellValue("P{$fila}", $colaborador->incidenciasAsistencia->count());
             $hoja->setCellValue("Q{$fila}", self::formatearDuracion($minutosAprobados));
             $hoja->setCellValue("R{$fila}", self::formatearDuracion($minutosPendientes));
+            $fila++;
         }
 
         $azul = '0B4F94';
@@ -109,7 +130,7 @@ final class ReporteColaboradoresExcelExporter
         $hoja->getStyle('N3')->getFill()->getStartColor()->setARGB('FF06325F');
         $hoja->getStyle('O3')->getFill()->getStartColor()->setARGB('FF5B7FB0');
 
-        $ultimaFila = max(4, $colaboradores->count() + 3);
+        $ultimaFila = max(4, $fila - 1);
         $hoja->getStyle("A4:A{$ultimaFila}")->getNumberFormat()->setFormatCode('@');
         $hoja->getStyle("N4:N{$ultimaFila}")->getFont()->setBold(true);
         $hoja->getStyle("N4:N{$ultimaFila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFE8EEF6');

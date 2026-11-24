@@ -22,6 +22,7 @@ class ResumenAsistenciaRequest extends FormRequest
             'colaborador_ids.*' => ['integer'],
             'horas_extra_ids' => ['nullable', 'array'],
             'horas_extra_ids.*' => ['integer'],
+            'tipo_reporte' => ['nullable', 'in:global,inasistencias,faltas,tardanzas,marcaciones_incompletas,permisos,incidencias'],
             'per_page' => ['nullable', 'integer', 'between:1,100'],
         ];
     }

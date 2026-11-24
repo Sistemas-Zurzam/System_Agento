@@ -68,6 +68,7 @@ class AsistenciaConsultaService
     public function reporteColaboradores(Empresa $empresa, array $filtros): \Illuminate\Support\Collection
     {
         $colaboradores = $this->queryColaboradoresFiltrados($empresa, $filtros)
+            ->without('marcacionesAsistencia', 'asignacionesHorario', 'calendario', 'horario')
             ->orderBy('apellidos')
             ->orderBy('nombres')
             ->get();

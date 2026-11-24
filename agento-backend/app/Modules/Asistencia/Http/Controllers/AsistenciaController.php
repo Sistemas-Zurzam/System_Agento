@@ -96,8 +96,9 @@ class AsistenciaController extends Controller
         $filtros = $request->validated();
 
         $colaboradores = $this->consultas->reporteColaboradores($empresa, $filtros);
-        $contenido = ReporteColaboradoresExcelExporter::generar($empresa, $filtros['fecha_desde'], $filtros['fecha_hasta'], $colaboradores);
-        $nombre = sprintf('Resumen_asistencia_%s_%s.xlsx', Str::slug($empresa->nombre_comercial), $filtros['fecha_desde']);
+        $tipo = $filtros['tipo_reporte'] ?? 'global';
+        $contenido = ReporteColaboradoresExcelExporter::generar($empresa, $filtros['fecha_desde'], $filtros['fecha_hasta'], $colaboradores, $tipo);
+        $nombre = sprintf('Asistencia_%s_%s_%s.xlsx', $tipo, Str::slug($empresa->nombre_comercial), $filtros['fecha_desde']);
 
         return $this->descargaExcel($contenido, $nombre);
     }
