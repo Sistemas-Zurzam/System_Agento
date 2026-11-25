@@ -71,18 +71,19 @@ final class ReporteColaboradoresExcelExporter
             'Empresa', $empresa->nombre_comercial,
             'Período', "{$fechaDesde} a {$fechaHasta}",
         ], null, 'A1');
-        $hoja->setCellValue('A2', 'Se lee como una suma: Trabajados + Faltas + En revisión + Permisos + Descansos + Remoto + Sin clasificar + Sin registro = Total días. "En revisión": días del 27 al cierre sin marcación, no se consideran falta (igual que en la planilla). "Con tardanza" es solo un detalle de los días trabajados: no se suma.');
+        $hoja->setCellValue('A2', 'Se lee como una suma: Trabajados + Faltas + En revisión + Permisos + Descansos + Remoto + Sin clasificar + Sin registro = Total días. "En revisión": días del 27 al cierre sin marcación, no se consideran falta (igual que en la planilla). "Con tardanza" es solo un detalle de los días trabajados: no se suma. "Minutos de tardanza": total del período, ya restada la tolerancia (lo que descuenta la planilla).');
 
         $encabezados = [
             'DNI', 'Nombre y apellidos', 'Sede', 'Área', 'Cargo',
             'Días trabajados', 'Faltas', 'En revisión (27 al cierre, no es falta)', 'Permisos / F. justificadas', 'Descansos / Feriados',
             'Trabajo remoto', 'Sin clasificar', 'Sin registro', '= Total días',
             'De los trabajados: con tardanza', 'Incidencias pendientes', 'Horas extra aprobadas', 'Horas extra pendientes de aprobación',
+            'Minutos de tardanza',
         ];
         $hoja->fromArray($encabezados, null, 'A3');
         $hoja->setCellValueExplicit('N3', '= Total días', DataType::TYPE_STRING);
         if ($tipos !== ['global'] && in_array('marcaciones_incompletas', $tipos, true)) {
-            $hoja->setCellValue('S3', 'Marcaciones incompletas');
+            $hoja->setCellValue('T3', 'Marcaciones incompletas');
         }
 
         // Todo como fechas calendario en el mismo timezone, para que
@@ -145,8 +146,11 @@ final class ReporteColaboradoresExcelExporter
             $hoja->setCellValue("P{$fila}", $incidencias->count());
             $hoja->setCellValue("Q{$fila}", self::formatearDuracion($minutosAprobados));
             $hoja->setCellValue("R{$fila}", self::formatearDuracion($minutosPendientes));
+            // Mismos minutos que descuenta la planilla (ya restada la
+            // tolerancia; solo días trabajados con entrada y salida).
+            $hoja->setCellValue("S{$fila}", (int) $trabajados->sum('minutos_tardanza'));
             if ($tipos !== ['global'] && in_array('marcaciones_incompletas', $tipos, true)) {
-                $hoja->setCellValue("S{$fila}", $resultados->where('estado', 'marcacion_incompleta')->count());
+                $hoja->setCellValue("T{$fila}", $resultados->where('estado', 'marcacion_incompleta')->count());
             }
             $fila++;
         }
@@ -156,7 +160,7 @@ final class ReporteColaboradoresExcelExporter
             'font' => ['bold' => true],
         ]);
         $hoja->getStyle('A2')->getFont()->setItalic(true)->getColor()->setARGB('FF555555');
-        $ultimaColumnaEncabezado = $tipos !== ['global'] && in_array('marcaciones_incompletas', $tipos, true) ? 'S' : 'R';
+        $ultimaColumnaEncabezado = $tipos !== ['global'] && in_array('marcaciones_incompletas', $tipos, true) ? 'T' : 'S';
         $hoja->getStyle("A3:{$ultimaColumnaEncabezado}3")->applyFromArray([
             'font' => ['bold' => true, 'color' => ['argb' => 'FFFFFFFF']],
             'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['argb' => 'FF'.$azul]],
@@ -166,14 +170,16 @@ final class ReporteColaboradoresExcelExporter
         // que se suman, para que no se lean como otra categoría.
         $hoja->getStyle('N3')->getFill()->getStartColor()->setARGB('FF06325F');
         $hoja->getStyle('O3')->getFill()->getStartColor()->setARGB('FF5B7FB0');
+        $hoja->getStyle('S3')->getFill()->getStartColor()->setARGB('FF5B7FB0');
 
         $ultimaFila = max(4, $fila - 1);
         $hoja->getStyle("A4:A{$ultimaFila}")->getNumberFormat()->setFormatCode('@');
         $hoja->getStyle("N4:N{$ultimaFila}")->getFont()->setBold(true);
         $hoja->getStyle("N4:N{$ultimaFila}")->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setARGB('FFE8EEF6');
         $hoja->getStyle("O4:O{$ultimaFila}")->getFont()->setItalic(true);
+        $hoja->getStyle("S4:S{$ultimaFila}")->getFont()->setItalic(true);
         $hoja->freezePane('A4');
-        $hoja->setAutoFilter("A3:R{$ultimaFila}");
+        $hoja->setAutoFilter("A3:S{$ultimaFila}");
         $hoja->getRowDimension(1)->setRowHeight(20);
         $hoja->getRowDimension(2)->setRowHeight(20);
         $hoja->getRowDimension(3)->setRowHeight(44);
@@ -181,7 +187,7 @@ final class ReporteColaboradoresExcelExporter
         foreach ([
             'A' => 14, 'B' => 34, 'C' => 18, 'D' => 20, 'E' => 22,
             'F' => 11, 'G' => 8, 'H' => 14, 'I' => 13, 'J' => 12, 'K' => 10,
-            'L' => 11, 'M' => 10, 'N' => 11, 'O' => 15, 'P' => 13, 'Q' => 14, 'R' => 18,
+            'L' => 11, 'M' => 10, 'N' => 11, 'O' => 15, 'P' => 13, 'Q' => 14, 'R' => 18, 'S' => 13,
         ] as $columna => $ancho) {
             $hoja->getColumnDimension($columna)->setWidth($ancho);
         }
@@ -191,14 +197,14 @@ final class ReporteColaboradoresExcelExporter
         if ($tipos !== ['global']) {
             $columnasConcepto = [
                 'inasistencias' => ['G', 'H', 'M'], 'faltas' => ['G'],
-                'tardanzas' => ['O'], 'marcaciones_incompletas' => ['S'],
+                'tardanzas' => ['O', 'S'], 'marcaciones_incompletas' => ['T'],
                 'permisos' => ['I'], 'incidencias' => ['P'],
             ];
             $conservar = ['A', 'B', 'C', 'D', 'E'];
             foreach ($tipos as $concepto) {
                 array_push($conservar, ...($columnasConcepto[$concepto] ?? []));
             }
-            for ($indice = 19; $indice >= 6; $indice--) {
+            for ($indice = 20; $indice >= 6; $indice--) {
                 $columna = Coordinate::stringFromColumnIndex($indice);
                 if (! in_array($columna, $conservar, true)) {
                     $hoja->removeColumn($columna);
