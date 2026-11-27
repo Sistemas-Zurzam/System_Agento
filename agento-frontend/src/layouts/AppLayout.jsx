@@ -19,8 +19,7 @@ const SECCIONES = {
   'nominas-personas': { title: 'Nóminas', subtitle: 'Gestión de personas' },
   'nominas-remuneraciones': { title: 'Nóminas', subtitle: 'Gestión de remuneraciones' },
   'nominas-asistencias': { title: 'Nóminas', subtitle: 'Gestión de asistencias' },
-  'nominas-liquidaciones': { title: 'Nóminas', subtitle: 'Liquidaciones' },
-  'soporte-tickets': { title: 'Soporte', subtitle: 'Gestión de tickets' },
+  'nominas-liquidaciones': { title: 'Nóminas', subtitle: 'Liquidaciones' },  'soporte-tickets': { title: 'Soporte', subtitle: 'Gestión de tickets' },
   seleccion: { title: 'Selección y reclutamiento', subtitle: 'Solicitudes, procesos y candidatos' },
   crm: { title: 'CRM', subtitle: 'Conversaciones de WhatsApp' },
 };
@@ -144,8 +143,7 @@ export default function AppLayout({
       'nominas-personas': '/nominas/personas',
       'nominas-remuneraciones': '/nominas/remuneraciones',
       'nominas-asistencias': '/nominas/asistencias',
-      'nominas-liquidaciones': '/nominas/liquidaciones',
-      'soporte-tickets': '/soporte/tickets',
+      'nominas-liquidaciones': '/nominas/liquidaciones',      'soporte-tickets': '/soporte/tickets',
     };
     navigate(paths[key] ?? '/mi-perfil');
   };
@@ -164,6 +162,7 @@ export default function AppLayout({
           : route.section === 'crm' ? `crm-${route.crmVista}` : route.section}
         onSelect={handleSectionSelect}
         user={user}
+        onUserRefresh={onUserRefresh}
       />
       <Layout>
         <Header
@@ -205,8 +204,7 @@ export default function AppLayout({
               onVolver={() => navigate('/nominas/asistencias')}
             />
           )}
-          {route.section === 'nominas-liquidaciones' && <GestionLiquidaciones user={user} />}
-          {route.section === 'soporte-tickets' && <GestionTickets />}
+          {route.section === 'nominas-liquidaciones' && <GestionLiquidaciones user={user} />}          {route.section === 'soporte-tickets' && <GestionTickets />}
           {route.section === 'seleccion' && (
             <GestionSeleccion
               user={user}

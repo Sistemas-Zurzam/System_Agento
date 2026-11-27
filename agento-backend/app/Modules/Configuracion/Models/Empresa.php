@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
     'activa',
     'descanso_flexible_automatico',
     'bono_asistencia_habilitado',
+    'pago_por_clases_habilitado',
     'servicio_planilla',
     'servicio_reclutamiento',
 ])]
@@ -57,6 +58,7 @@ class Empresa extends Model
             'activa' => 'boolean',
             'descanso_flexible_automatico' => 'boolean',
             'bono_asistencia_habilitado' => 'boolean',
+            'pago_por_clases_habilitado' => 'boolean',
             'servicio_planilla' => 'boolean',
             'servicio_reclutamiento' => 'boolean',
             'inscrita_remype' => 'boolean',

@@ -47,6 +47,7 @@ export default function EmpresaFormModal({
         seguro_salud: initialValues?.seguro_salud ?? 'essalud',
         descanso_flexible_automatico: initialValues?.descanso_flexible_automatico ?? false,
         bono_asistencia_habilitado: initialValues?.bono_asistencia_habilitado ?? false,
+        pago_por_clases_habilitado: initialValues?.pago_por_clases_habilitado ?? false,
         servicio_planilla: initialValues?.servicio_planilla ?? true,
         servicio_reclutamiento: initialValues?.servicio_reclutamiento ?? false,
       });
@@ -222,6 +223,15 @@ export default function EmpresaFormModal({
             name="bono_asistencia_habilitado"
             valuePropName="checked"
             extra="Política específica de esta empresa (actualmente Livex): habilita la pestaña 'Bonos' en Gestión de Remuneraciones para calcular y aplicar el bono de asistencia. Con esto apagado (por defecto), la pestaña queda deshabilitada."
+          >
+            <Switch />
+          </Form.Item>
+
+          <Form.Item
+            label="Pago por clases habilitado"
+            name="pago_por_clases_habilitado"
+            valuePropName="checked"
+            extra="Para empresas que pagan a sus instructoras por clase dictada (p. ej. un estudio de pilates): habilita la pestaña 'Pago por clases' en Gestión de Remuneraciones, las tarifas por instructora y la recepción de clases desde su sistema. Con esto apagado (por defecto), nada cambia."
           >
             <Switch />
           </Form.Item>

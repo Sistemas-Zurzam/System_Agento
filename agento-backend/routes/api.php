@@ -452,3 +452,6 @@ require __DIR__.'/agento.php';
 
 // CRM: conversaciones de WhatsApp Cloud API (webhook público y bandeja del panel).
 require __DIR__.'/crm.php';
+
+// Integraciones de sistemas externos por API (clases dictadas de Firme Studio).
+require __DIR__.'/integraciones.php';

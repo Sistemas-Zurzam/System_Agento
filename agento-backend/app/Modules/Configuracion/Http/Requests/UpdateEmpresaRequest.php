@@ -40,6 +40,7 @@ class UpdateEmpresaRequest extends FormRequest
             'seguro_salud' => ['nullable', Rule::in(['essalud', 'sis'])],
             'descanso_flexible_automatico' => ['nullable', 'boolean'],
             'bono_asistencia_habilitado' => ['nullable', 'boolean'],
+            'pago_por_clases_habilitado' => ['nullable', 'boolean'],
             'servicio_planilla' => ['nullable', 'boolean'],
             'servicio_reclutamiento' => ['nullable', 'boolean'],
         ];

@@ -13,6 +13,7 @@ import {
 import { ConfigProvider, Layout, Menu } from 'antd';
 import { useMemo } from 'react';
 import agentoLogo from '../../assets/agento-logo.png';
+import EmpresaActivaFiltro from '../../modules/configuracion/components/EmpresaActivaFiltro';
 import FileInvoiceDollarIcon from '../icons/FileInvoiceDollarIcon';
 
 const { Sider } = Layout;
@@ -165,7 +166,7 @@ function buildMenuItems(isAdmin, puedeVerHorarios, puedeVerAsistencia, puedeVerN
   return items;
 }
 
-export default function Sidebar({ collapsed, onCollapse, selectedKey, onSelect, user }) {
+export default function Sidebar({ collapsed, onCollapse, selectedKey, onSelect, user, onUserRefresh }) {
   const isAdmin = user?.role === 'administrador';
   const puedeVerHorarios = user?.permisos?.includes('horarios.ver');
   const puedeVerAsistencia = user?.permisos?.includes('asistencia.ver');
@@ -218,6 +219,43 @@ export default function Sidebar({ collapsed, onCollapse, selectedKey, onSelect, 
           </span>
         )}
       </div>
+
+      {/* Cambio de empresa activa: un solo selector para todo el panel. Solo se
+          dibuja si el usuario puede elegir entre más de una empresa. Tokens
+          propios para que el selector y su lista desplegable queden legibles
+          sobre el degradado oscuro. */}
+      {!collapsed && (
+        <ConfigProvider
+          theme={{
+            token: {
+              colorText: '#ffffff',
+              colorBgContainer: 'rgba(255, 255, 255, 0.08)',
+              colorBorder: 'rgba(255, 255, 255, 0.25)',
+              colorTextPlaceholder: 'rgba(255, 255, 255, 0.5)',
+              colorTextQuaternary: 'rgba(255, 255, 255, 0.6)',
+              colorTextDisabled: 'rgba(255, 255, 255, 0.45)',
+              colorBgElevated: '#0b2a52',
+            },
+            components: {
+              Select: {
+                optionSelectedBg: 'rgba(255, 255, 255, 0.15)',
+                optionActiveBg: 'rgba(255, 255, 255, 0.1)',
+                optionSelectedColor: '#ffffff',
+              },
+            },
+          }}
+        >
+          <div className="px-4 pt-3 empty:hidden">
+            <EmpresaActivaFiltro
+              user={user}
+              onUserRefresh={onUserRefresh}
+              className="w-full"
+              etiqueta="Empresa activa"
+              ocultarSiUnica
+            />
+          </div>
+        </ConfigProvider>
+      )}
 
       {/* Tokens propios solo para este Menu (no globales): el fondo del
           sidebar ya es el degradado de arriba, así que el Menu en sí debe

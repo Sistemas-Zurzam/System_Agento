@@ -13,7 +13,6 @@ import { Alert, App, Avatar, Button, Input, Switch, Table, Tag } from 'antd';
 import dayjs from 'dayjs';
 import { useEffect, useState } from 'react';
 import GestionHorarios from '../../modules/asistencia/pages/GestionHorarios';
-import EmpresaActivaFiltro from '../../modules/configuracion/components/EmpresaActivaFiltro';
 import { TIPO_CONTRATO_OPTIONS } from '../../modules/personas/constants/opciones';
 import ImportarColaboradoresModal from '../../modules/personas/components/ImportarColaboradoresModal';
 import ImportarFotosPerfilModal from '../../modules/personas/components/ImportarFotosPerfilModal';
@@ -30,7 +29,7 @@ function etiquetaTipoContrato(valor) {
   return TIPO_CONTRATO_OPTIONS.find((o) => o.value === valor)?.label ?? valor;
 }
 
-function ListaColaboradores({ user, onUserRefresh, onVerHorarios, onVerSolicitudesCese, colaboradorId, onAbrirColaborador, onVolverColaboradores, onIrAPlanificacion }) {
+function ListaColaboradores({ user, onVerHorarios, onVerSolicitudesCese, colaboradorId, onAbrirColaborador, onVolverColaboradores, onIrAPlanificacion }) {
   const { colaboradores, stats, loading, pagination, fetchColaboradores, crearColaborador, actualizarConfiguracionNomina, restaurarColaborador, subirFotoPerfil, fetchRotativosSinRol } =
     useColaboradores();
   const { message, modal } = App.useApp();
@@ -399,7 +398,6 @@ function ListaColaboradores({ user, onUserRefresh, onVerHorarios, onVerSolicitud
           className="max-w-xs"
           allowClear
         />
-        <EmpresaActivaFiltro user={user} onUserRefresh={onUserRefresh} />
         <div className="flex items-center gap-2">
           <Switch size="small" checked={todasEmpresas} onChange={setTodasEmpresas} />
           <span className="text-sm text-gray-600">Todas las empresas</span>
@@ -521,7 +519,6 @@ export default function GestionPersonas({ user, onUserRefresh, colaboradorId, on
   return (
     <ListaColaboradores
       user={user}
-      onUserRefresh={onUserRefresh}
       onVerHorarios={() => setVista('horarios')}
       onVerSolicitudesCese={() => setVista('solicitudes-cese')}
       colaboradorId={colaboradorId}

@@ -3,11 +3,15 @@ import { useEffect, useState } from 'react';
 import { useEmpresas } from '../hooks/useEmpresas';
 
 /**
- * Selector de empresa activa para usar dentro del área de filtros de una
- * vista (junto a búsqueda/estado), además del que ya vive en el Header
- * global. Mismo mecanismo de cambio de empresa que Header.jsx.
+ * Selector de empresa activa. Mismo mecanismo de cambio de empresa que
+ * Header.jsx (PUT /empresas/{id}/activar y refresco del usuario).
+ *
+ * Props de presentación (todas opcionales):
+ *  - className: ancho del selector (por defecto w-56, para áreas de filtros).
+ *  - etiqueta: texto pequeño sobre el selector (p. ej. en el panel lateral).
+ *  - ocultarSiUnica: no se dibuja si el usuario solo puede elegir una empresa.
  */
-export default function EmpresaActivaFiltro({ user, onUserRefresh }) {
+export default function EmpresaActivaFiltro({ user, onUserRefresh, className = 'w-56', etiqueta, ocultarSiUnica = false }) {
   const { message } = App.useApp();
   const { empresas, fetchEmpresas, activarEmpresa } = useEmpresas();
   const [switching, setSwitching] = useState(false);
@@ -34,18 +38,31 @@ export default function EmpresaActivaFiltro({ user, onUserRefresh }) {
     }
   };
 
-  return (
+  const opciones = empresas
+    .filter((empresa) => empresa.activa)
+    .map((empresa) => ({ value: empresa.id, label: empresa.nombre_comercial }));
+
+  if (ocultarSiUnica && opciones.length <= 1) return null;
+
+  const selector = (
     <Select
       value={user?.empresa?.id}
       onChange={handleChange}
       loading={switching}
       disabled={switching}
-      className="w-56"
+      className={className}
       showSearch
       optionFilterProp="label"
-      options={empresas
-        .filter((empresa) => empresa.activa)
-        .map((empresa) => ({ value: empresa.id, label: empresa.nombre_comercial }))}
+      options={opciones}
     />
+  );
+
+  if (!etiqueta) return selector;
+
+  return (
+    <div>
+      <p className="mb-1.5 text-xs text-white/50">{etiqueta}</p>
+      {selector}
+    </div>
   );
 }

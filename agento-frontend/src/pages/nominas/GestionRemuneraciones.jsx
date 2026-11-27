@@ -51,6 +51,7 @@ import ReporteComisionesHeModal from '../../modules/remuneraciones/components/Re
 import EnviarBoletasCorreoModal from '../../modules/remuneraciones/components/EnviarBoletasCorreoModal';
 import TelecreditoBcpModal from '../../modules/remuneraciones/components/TelecreditoBcpModal';
 import PagosSemanalesZazuTab from '../../modules/remuneraciones/components/PagosSemanalesZazuTab';
+import GestionClasesExternas from '../../modules/clases-externas/pages/GestionClasesExternas';
 import { useRemuneraciones } from '../../modules/remuneraciones/hooks/useRemuneraciones';
 import { colorForName, initialsForName } from '../../utils/avatarColor';
 
@@ -1324,6 +1325,12 @@ export default function GestionRemuneraciones({ user, onUserRefresh }) {
               />
             ),
           },
+          // Pago por clases: opt-in por empresa (Configuraciones → Empresas → «Pago por clases habilitado»).
+          ...(user?.empresa?.pago_por_clases_habilitado ? [{
+            key: 'pago-por-clases',
+            label: 'Pago por clases',
+            children: <GestionClasesExternas user={user} />,
+          }] : []),
           {
             key: 'cts-gratificaciones',
             label: 'CTS y gratificaciones',

@@ -35,6 +35,7 @@ class EmpresaResource extends JsonResource
             'activa' => $this->activa,
             'descanso_flexible_automatico' => $this->descanso_flexible_automatico,
             'bono_asistencia_habilitado' => $this->bono_asistencia_habilitado,
+            'pago_por_clases_habilitado' => $this->pago_por_clases_habilitado,
             'servicio_planilla' => $this->servicio_planilla,
             'servicio_reclutamiento' => $this->servicio_reclutamiento,
             // Un administrador global opera como Administrador en TODAS las

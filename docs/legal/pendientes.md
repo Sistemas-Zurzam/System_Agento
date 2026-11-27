@@ -51,3 +51,13 @@ Se cargan en la tabla `seleccion_textos_legales` (tipo + versión + texto + vige
 - Notificar por correo al candidato cuando su solicitud cambie de estado.
 - Alertas de solicitudes por vencer para RR. HH.
 - Anonimizar también los datos del candidato en la bitácora de Auditoría y en los respaldos (hoy no se alcanzan).
+
+## 3. Tributario — pago por clases (integración Firme Studio)
+
+> No es protección de datos, pero también **debe validarlo un profesional** (contador del cliente), no el código.
+
+| Tema | Qué hace hoy el sistema | Qué debe validarse |
+|---|---|---|
+| **Retención de renta de 4ta categoría** de los recibos por honorarios de las instructoras | Retiene la tasa configurada (`renta_4ta_tasa`) sobre el bruto del mes cuando **supera** el umbral configurado (`renta_4ta_umbral`) y la instructora no tiene suspensión de retenciones. Redondeo medio hacia arriba a 2 decimales. Es la misma regla que usan los pagos de locadores que ya hace Agento (pagos semanales de Zazu) | Que la tasa, el umbral y su forma de aplicar (bruto del lote vs. acumulado del mes entre varios lotes o varios pagos) sean los correctos para el cliente. Que la suspensión de retenciones (`tiene_suspension_renta_4ta`) esté bien registrada |
+| Instructoras que **no** sean locadoras (planilla) | Quedan **observadas**: no entran al abono por clase | Definir si alguna instructora está en planilla y cómo se le paga |
+| Calificación de la relación (locación vs. laboral) | No se evalúa | Revisión del contador/abogado del cliente |
