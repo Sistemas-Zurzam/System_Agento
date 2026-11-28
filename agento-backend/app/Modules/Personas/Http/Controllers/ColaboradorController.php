@@ -341,7 +341,7 @@ class ColaboradorController extends Controller
     public function cesar(Request $request, Colaborador $colaborador): ColaboradorResource
     {
         $datos = $request->validate([
-            'fecha_cese' => ['required', 'date', 'after_or_equal:'.$colaborador->fecha_ingreso->toDateString(), 'before_or_equal:today'],
+            'fecha_cese' => ['required', 'date', 'after_or_equal:'.$colaborador->fecha_ingreso->toDateString()],
             'motivo_cese' => ['required', 'string', 'max:255'],
             // Causal tipificada (TUO D.Leg. 728 art. 16). Nullable en la API:
             // los ceses que llegan por solicitud del portal la completan en la liquidación.

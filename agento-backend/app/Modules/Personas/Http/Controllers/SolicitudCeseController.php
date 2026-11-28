@@ -74,7 +74,7 @@ class SolicitudCeseController extends Controller
         $registro = $this->encontrar($request, $solicitud)->load('colaborador');
         $ingreso = $registro->colaborador->fecha_ingreso?->toDateString();
         $datos = $request->validate([
-            'fecha_cese' => array_filter(['required', 'date', $ingreso ? "after_or_equal:{$ingreso}" : null, 'before_or_equal:today']),
+            'fecha_cese' => array_filter(['required', 'date', $ingreso ? "after_or_equal:{$ingreso}" : null]),
             'motivo_cese' => ['required', 'string', 'max:255'],
         ]);
         $usuario = $request->user('api');

@@ -50,12 +50,12 @@ export default function CesarColaboradorModal({ open, colaborador, submitting, o
         showIcon
         message="La fecha de cese es el último día trabajado."
         description={esHonorarios
-          ? 'El recibo por honorarios del mes se calculará hasta esa fecha.'
-          : 'La boleta del mes pagará hasta esa fecha. La liquidación de beneficios (CTS, gratificación y vacaciones) se calcula después en Nóminas → Liquidaciones.'}
+          ? 'El recibo por honorarios del mes se calculará hasta esa fecha. Al registrar el cese, el colaborador queda inactivo inmediatamente, incluso si eliges una fecha futura.'
+          : 'La boleta del mes pagará hasta esa fecha. Al registrar el cese, el colaborador queda inactivo inmediatamente, incluso si eliges una fecha futura. La liquidación de beneficios se calcula después en Nóminas → Liquidaciones.'}
       />
       <Form form={form} layout="vertical" onFinish={guardar}>
         <Form.Item label="Fecha de cese (último día trabajado)" name="fecha_cese" rules={[{ required: true, message: 'Selecciona la fecha de cese' }]}>
-          <DatePicker className="w-full" format="DD/MM/YYYY" minDate={colaborador?.fecha_ingreso ? dayjs(colaborador.fecha_ingreso) : undefined} maxDate={dayjs()} />
+          <DatePicker className="w-full" format="DD/MM/YYYY" minDate={colaborador?.fecha_ingreso ? dayjs(colaborador.fecha_ingreso) : undefined} />
         </Form.Item>
         {pideCausal && (
           <Form.Item label="Causal del cese" name="causal_cese" rules={[{ required: true, message: 'Selecciona la causal' }]}
