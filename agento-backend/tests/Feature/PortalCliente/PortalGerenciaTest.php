@@ -551,16 +551,18 @@ class PortalGerenciaTest extends TestCase
             ->assertJsonPath('data.etapa', 'aprobada_pendiente_ejecucion');
         $this->assertTrue((bool) $this->propio->fresh()->activo, 'Aprobar no debe cesar.');
 
-        // Ejecución fallida (fecha futura no admitida por Personas): sigue pendiente.
+        // Una fecha anterior al ingreso sigue siendo inválida y deja la solicitud pendiente.
         $this->como($rrhh)->postJson("/api/solicitudes-cese/{$id}/ejecutar", [
-            'fecha_cese' => now()->addDays(10)->toDateString(), 'motivo_cese' => 'Abandono',
+            'fecha_cese' => $this->propio->fecha_ingreso->copy()->subDay()->toDateString(), 'motivo_cese' => 'Abandono',
         ])->assertUnprocessable();
         $this->assertNull(SolicitudCese::withoutGlobalScopes()->findOrFail($id)->ejecutada_at);
         $this->assertTrue((bool) $this->propio->fresh()->activo);
 
+        $fechaFutura = now()->addDays(10)->toDateString();
         $this->como($rrhh)->postJson("/api/solicitudes-cese/{$id}/ejecutar", [
-            'fecha_cese' => now()->toDateString(), 'motivo_cese' => 'Abandono',
-        ])->assertOk()->assertJsonPath('data.etapa', 'ejecutada');
+            'fecha_cese' => $fechaFutura, 'motivo_cese' => 'Abandono',
+        ])->assertOk()->assertJsonPath('data.etapa', 'ejecutada')
+            ->assertJsonPath('data.fecha_cese_efectiva', $fechaFutura);
         $this->assertFalse((bool) $this->propio->fresh()->activo);
 
         $this->como($rrhh)->postJson("/api/solicitudes-cese/{$id}/ejecutar", [

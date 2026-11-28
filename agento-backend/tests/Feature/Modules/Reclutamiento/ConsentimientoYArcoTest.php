@@ -221,7 +221,7 @@ class ConsentimientoYArcoTest extends TestCase
         $solicitud = SolicitudArco::withoutGlobalScopes()->firstOrFail();
         $this->assertSame($empresa->id, $solicitud->empresa_id);
         $this->assertEquals(['celular' => '922222222', 'nombres' => 'Rosa María'], $solicitud->detalle['cambios']);
-        $this->assertSame(10, (int) $solicitud->solicitada_at->diffInWeekdays($solicitud->vence_at));
+        $this->assertSame($solicitud->solicitada_at->copy()->addWeekdays(10)->toDateString(), $solicitud->vence_at->toDateString());
         $this->assertTrue(AuditoriaEvento::where('accion', 'arco.rectificacion_solicitada')->exists());
     }
 
